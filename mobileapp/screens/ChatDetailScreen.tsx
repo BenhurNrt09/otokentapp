@@ -1,12 +1,14 @@
-import { View, Text, FlatList, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, Image, Alert, Linking } from 'react-native';
+import { View, Text, FlatList, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, Image, Alert, Linking, Modal, ScrollView, Dimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
-import { useState, useRef, useEffect } from 'react';
-import * as ImagePicker from 'expo-image-picker';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Audio } from 'expo-av';
-import * as Location from 'expo-location';
+import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
+import * as Location from 'expo-location';
+import * as FileSystem from 'expo-file-system/legacy';
 import { QUICK_REPLIES } from '../constants/mocks';
 
 export default function ChatDetailScreen() {
@@ -18,6 +20,7 @@ export default function ChatDetailScreen() {
     const [messages, setMessages] = useState(chat?.messages || []);
     const flatListRef = useRef<FlatList>(null);
     const [showAttachments, setShowAttachments] = useState(false);
+    const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
     // Recording & Playback State
     const [recording, setRecording] = useState<Audio.Recording | undefined>(undefined);
@@ -35,6 +38,64 @@ export default function ChatDetailScreen() {
             setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100);
         }
     }, [messages]);
+
+    // Load messages from storage on mount
+    useEffect(() => {
+        loadMessages();
+    }, []);
+
+    // Save messages to storage whenever they change
+    useEffect(() => {
+        if (messages.length > 0) {
+            saveMessages();
+        }
+    }, [messages]);
+
+    // Mark messages as read when user enters chat
+    useEffect(() => {
+        if (chat) {
+            markMessagesAsRead();
+        }
+    }, []); // Run only on mount
+
+    const loadMessages = async () => {
+        try {
+            const storedMessages = await AsyncStorage.getItem(`chat_${chat?.id}_messages`);
+            if (storedMessages) {
+                setMessages(JSON.parse(storedMessages));
+            }
+        } catch (e) {
+            console.error('Error loading messages:', e);
+        }
+    };
+
+    const saveMessages = async () => {
+        try {
+            await AsyncStorage.setItem(`chat_${chat?.id}_messages`, JSON.stringify(messages));
+        } catch (e) {
+            console.error('Error saving messages:', e);
+        }
+    };
+
+    const markMessagesAsRead = async () => {
+        // Mark all messages from the other user as read
+        setMessages((prev: any[]) =>
+            prev.map((msg: any) =>
+                msg.sender !== 'me' ? { ...msg, read: true } : msg
+            )
+        );
+        // Update chat's unread count to 0
+        if (chat.unreadCount && chat.unreadCount > 0) {
+            chat.unreadCount = 0;
+        }
+        // Save read status
+        try {
+            await AsyncStorage.setItem(`chat_${chat?.id}_read`, 'true');
+        } catch (e) {
+            console.error('Error saving read status:', e);
+        }
+    };
+
 
     useEffect(() => {
         return () => {
@@ -196,7 +257,7 @@ export default function ChatDetailScreen() {
                     return;
                 }
                 result = await ImagePicker.launchCameraAsync({
-                    mediaTypes: ImagePicker.MediaType.Images,
+                    mediaTypes: ImagePicker.MediaTypeOptions.Images,
                     quality: 0.7,
                 });
             } else {
@@ -207,7 +268,7 @@ export default function ChatDetailScreen() {
                     return;
                 }
                 result = await ImagePicker.launchImageLibraryAsync({
-                    mediaTypes: ImagePicker.MediaType.Images,
+                    mediaTypes: ImagePicker.MediaTypeOptions.Images,
                     quality: 0.7,
                 });
             }
@@ -230,11 +291,34 @@ export default function ChatDetailScreen() {
             });
 
             if (!result.canceled && result.assets && result.assets.length > 0) {
-                sendMessage(result.assets[0].uri, 'document');
+                const asset = result.assets[0];
+                sendMessage(asset.uri, 'document');
             }
         } catch (e) {
             console.error(e);
             Alert.alert('Hata', 'Belge seçilirken bir hata oluştu.');
+        }
+    };
+
+    const handleDocumentPress = async (uri: string) => {
+        try {
+            // For file URIs, use FileSystem to share/open
+            const supported = await Linking.canOpenURL(uri);
+            if (supported) {
+                await Linking.openURL(uri);
+            } else {
+                // Try to share the file if direct opening doesn't work
+                const fileInfo = await FileSystem.getInfoAsync(uri);
+                if (fileInfo.exists) {
+                    // Just alert - on mobile, the file will be accessible through message
+                    Alert.alert('Belge', 'Belge sisteminizde kaydedildi: ' + uri);
+                } else {
+                    Alert.alert('Hata', 'Belge bulunamadı.');
+                }
+            }
+        } catch (e) {
+            console.error('Error opening document:', e);
+            Alert.alert('Hata', 'Belge açılamadı.');
         }
     };
 
@@ -277,7 +361,9 @@ export default function ChatDetailScreen() {
                         }`}
                 >
                     {item.type === 'image' ? (
-                        <Image source={{ uri: item.mediaUrl }} style={{ width: 200, height: 150, borderRadius: 8 }} resizeMode="cover" />
+                        <TouchableOpacity onPress={() => setSelectedImage(item.mediaUrl)}>
+                            <Image source={{ uri: item.mediaUrl }} style={{ width: 200, height: 150, borderRadius: 8 }} resizeMode="cover" />
+                        </TouchableOpacity>
                     ) : item.type === 'voice' ? (
                         <View className="flex-row items-center gap-2">
                             <TouchableOpacity
@@ -321,8 +407,8 @@ export default function ChatDetailScreen() {
         <SafeAreaView className="flex-1 bg-slate-50" edges={['top', 'bottom']}>
             <KeyboardAvoidingView
                 style={{ flex: 1 }}
-                behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-                keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
+                behavior={'padding'}
+                keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
             >
                 {/* Header */}
                 <View className="bg-white px-4 py-3 border-b border-gray-100 flex-row items-center shadow-sm z-10">
@@ -428,6 +514,40 @@ export default function ChatDetailScreen() {
                     </View>
                 )}
             </KeyboardAvoidingView>
+
+            {/* Image Zoom Modal */}
+            <Modal
+                visible={selectedImage !== null}
+                transparent={true}
+                onRequestClose={() => setSelectedImage(null)}
+            >
+                <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.95)', justifyContent: 'center', alignItems: 'center' }}>
+                    <TouchableOpacity
+                        style={{
+                            position: 'absolute',
+                            top: 48,
+                            right: 24,
+                            zIndex: 10,
+                            width: 40,
+                            height: 40,
+                            backgroundColor: 'rgba(255,255,255,0.2)',
+                            borderRadius: 20,
+                            justifyContent: 'center',
+                            alignItems: 'center'
+                        }}
+                        onPress={() => setSelectedImage(null)}
+                    >
+                        <Ionicons name="close" size={28} color="white" />
+                    </TouchableOpacity>
+                    {selectedImage && (
+                        <Image
+                            source={{ uri: selectedImage }}
+                            style={{ width: Dimensions.get('window').width, height: Dimensions.get('window').height * 0.8 }}
+                            resizeMode="contain"
+                        />
+                    )}
+                </View>
+            </Modal>
         </SafeAreaView>
     );
 }

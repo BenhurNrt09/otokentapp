@@ -25,8 +25,12 @@ import NotificationSettingsScreen from './screens/NotificationSettingsScreen';
 import PrivacySecurityScreen from './screens/PrivacySecurityScreen';
 import HelpCenterScreen from './screens/HelpCenterScreen';
 import TermsScreen from './screens/TermsScreen';
+import PrivacyPolicyScreen from './screens/PrivacyPolicyScreen';
+import CookiePolicyScreen from './screens/CookiePolicyScreen';
 import { RootStackParamList } from './types';
 import { AppProvider, useApp } from './context/AppContext';
+import { ToastProvider } from './context/ToastContext';
+import { View, Text } from 'react-native';
 
 // Setup Notifications
 // Setup Notifications
@@ -44,6 +48,8 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 const Tab = createBottomTabNavigator();
 
 function TabNavigator() {
+  const { unreadNotificationCount, unreadMessageCount } = useApp();
+
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
@@ -57,18 +63,42 @@ function TabNavigator() {
         },
         tabBarIcon: ({ focused, color, size }) => {
           let iconName: any;
+          let badgeCount = 0;
 
           if (route.name === 'Vehicles') {
             iconName = focused ? 'car' : 'car-outline';
           } else if (route.name === 'Messages') {
             iconName = focused ? 'chatbubbles' : 'chatbubbles-outline';
+            badgeCount = unreadMessageCount;
           } else if (route.name === 'Insurance') {
             iconName = focused ? 'shield-checkmark' : 'shield-checkmark-outline';
           } else if (route.name === 'Profile') {
             iconName = focused ? 'person' : 'person-outline';
           }
 
-          return <Ionicons name={iconName} size={size} color={color} />;
+          return (
+            <View style={{ position: 'relative' }}>
+              <Ionicons name={iconName} size={size} color={color} />
+              {badgeCount > 0 && (
+                <View style={{
+                  position: 'absolute',
+                  top: -5,
+                  right: -10,
+                  backgroundColor: '#ef4444',
+                  borderRadius: 10,
+                  minWidth: 18,
+                  height: 18,
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  paddingHorizontal: 4
+                }}>
+                  <Text style={{ color: 'white', fontSize: 10, fontWeight: 'bold' }}>
+                    {badgeCount > 9 ? '9+' : badgeCount}
+                  </Text>
+                </View>
+              )}
+            </View>
+          );
         },
       })}
     >
@@ -90,7 +120,10 @@ function TabNavigator() {
       <Tab.Screen
         name="Profile"
         component={ProfileScreen}
-        options={{ title: 'Profil' }}
+        options={{
+          title: 'Profil',
+          tabBarBadge: unreadNotificationCount > 0 ? unreadNotificationCount : undefined
+        }}
       />
     </Tab.Navigator>
   );
@@ -139,6 +172,8 @@ function RootNavigator() {
           <Stack.Screen name="PrivacySecurity" component={PrivacySecurityScreen} options={{ animation: 'slide_from_right' }} />
           <Stack.Screen name="HelpCenter" component={HelpCenterScreen} options={{ animation: 'slide_from_right' }} />
           <Stack.Screen name="Terms" component={TermsScreen} options={{ animation: 'slide_from_right' }} />
+          <Stack.Screen name="PrivacyPolicy" component={PrivacyPolicyScreen} options={{ animation: 'slide_from_right' }} />
+          <Stack.Screen name="CookiePolicy" component={CookiePolicyScreen} options={{ animation: 'slide_from_right' }} />
         </>
       )}
     </Stack.Navigator>
@@ -173,7 +208,9 @@ export default function App() {
 
   return (
     <AppProvider>
-      <AppContent />
+      <ToastProvider>
+        <AppContent />
+      </ToastProvider>
     </AppProvider>
   );
 }

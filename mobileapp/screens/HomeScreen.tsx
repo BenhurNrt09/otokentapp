@@ -53,7 +53,6 @@ export default function HomeScreen() {
     return (
         <View className="flex-1 bg-slate-50">
             <Header />
-            {/* Search Bar removed, now in Header */}
 
             <FlatList
                 data={vehicles}

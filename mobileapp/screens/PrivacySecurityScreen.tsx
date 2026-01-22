@@ -49,11 +49,17 @@ export default function PrivacySecurityScreen() {
 
                 <View className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
                     <Text className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-4">Yasal</Text>
-                    <TouchableOpacity className="flex-row items-center justify-between py-3 border-b border-gray-100">
+                    <TouchableOpacity
+                        onPress={() => navigation.navigate('PrivacyPolicy')}
+                        className="flex-row items-center justify-between py-3 border-b border-gray-100"
+                    >
                         <Text className="text-slate-900 font-medium">Gizlilik Politikası</Text>
                         <Ionicons name="chevron-forward" size={20} color="#cbd5e1" />
                     </TouchableOpacity>
-                    <TouchableOpacity className="flex-row items-center justify-between py-3">
+                    <TouchableOpacity
+                        onPress={() => navigation.navigate('CookiePolicy')}
+                        className="flex-row items-center justify-between py-3"
+                    >
                         <Text className="text-slate-900 font-medium">Çerez Politikası</Text>
                         <Ionicons name="chevron-forward" size={20} color="#cbd5e1" />
                     </TouchableOpacity>

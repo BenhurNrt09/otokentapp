@@ -1,4 +1,4 @@
-import { View, Image, Text, TouchableOpacity, TextInput } from 'react-native';
+import { View, Image, Text, TouchableOpacity, TextInput, Dimensions } from 'react-native';
 import React, { useState } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -9,57 +9,74 @@ import { useApp } from '../context/AppContext';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
-export default function Header() {
+interface HeaderProps {
+    hideAds?: boolean;
+}
+
+export default function Header({ hideAds = false }: HeaderProps) {
     const navigation = useNavigation<NavigationProp>();
-    const { searchQuery, setSearchQuery } = useApp();
+    const { searchQuery, setSearchQuery, currentAdIndex } = useApp();
     const [isSearchVisible, setIsSearchVisible] = useState(false);
+
+    const ads = [
+        require('../assets/reklam1.png'),
+        require('../assets/reklam2.png'),
+    ];
 
     return (
         <SafeAreaView edges={['top']} className="bg-white shadow-sm z-50">
             <View className="flex-row items-center justify-between px-4 py-3 border-b border-gray-100">
                 {/* Logo Area */}
-                <View className="flex-row items-center">
+                <View className="flex-row items-center flex-1">
                     <Image
                         source={require('../assets/logo.png')}
-                        className="w-32 h-10"
+                        className="w-20 h-8"
                         resizeMode="contain"
                     />
                 </View>
 
-                {/* Right Actions */}
-                <View className="flex-row items-center space-x-4 gap-4">
-                    <TouchableOpacity onPress={() => setIsSearchVisible(!isSearchVisible)}>
-                        <Ionicons name={isSearchVisible ? "close" : "search"} size={24} color="#334155" />
+                {/* Right Icons */}
+                <View className="flex-row items-center gap-2">
+                    <TouchableOpacity onPress={() => setIsSearchVisible(!isSearchVisible)} className="p-2">
+                        <Ionicons name="search-outline" size={24} color="#1e293b" />
                     </TouchableOpacity>
-                    <TouchableOpacity onPress={() => navigation.navigate('Notifications')}>
-                        <Ionicons name="notifications-outline" size={24} color="#334155" />
+                    <TouchableOpacity onPress={() => navigation.navigate('Notifications')} className="p-2">
+                        <Ionicons name="notifications-outline" size={24} color="#1e293b" />
                     </TouchableOpacity>
-                    <TouchableOpacity onPress={() => navigation.navigate('Settings')}>
-                        <Ionicons name="settings-outline" size={24} color="#334155" />
+                    <TouchableOpacity onPress={() => navigation.navigate('Settings')} className="p-2">
+                        <Ionicons name="settings-outline" size={24} color="#1e293b" />
                     </TouchableOpacity>
                 </View>
             </View>
 
+            {/* Search Bar */}
             {isSearchVisible && (
-                <View className="px-4 py-2 bg-slate-50 border-b border-gray-100">
-                    <View className="flex-row items-center bg-white border border-gray-200 rounded-lg px-3 py-2">
-                        <Ionicons name="search" size={20} color="#94a3b8" />
-                        <TextInput
-                            className="flex-1 ml-2 text-base text-slate-800"
-                            placeholder="Marka, model veya ilan ara..."
-                            placeholderTextColor="#94a3b8"
-                            value={searchQuery}
-                            onChangeText={setSearchQuery}
-                            autoFocus
-                        />
-                    </View>
+                <View className="px-4 py-3 border-b border-gray-100">
+                    <TextInput
+                        className="bg-slate-50 rounded-xl px-4 py-2.5 text-slate-900"
+                        placeholder="Araç ara..."
+                        placeholderTextColor="#94a3b8"
+                        value={searchQuery}
+                        onChangeText={setSearchQuery}
+                        autoFocus
+                    />
                 </View>
             )}
 
-            {/* Ad Space */}
-            <View className="bg-slate-100 mx-4 my-3 py-10 rounded-xl items-center justify-center border border-gray-200 shadow-sm">
-                <Text className="text-lg text-slate-400 font-bold tracking-widest uppercase">REKLAM ALANI</Text>
-            </View>
+            {/* Ad Space - Auto-rotating */}
+            {!hideAds && (
+                <View style={{
+                    height: 160,
+                    width: Dimensions.get('window').width,
+                    overflow: 'hidden'
+                }}>
+                    <Image
+                        source={ads[currentAdIndex]}
+                        style={{ width: '100%', height: '100%' }}
+                        resizeMode="cover"
+                    />
+                </View>
+            )}
         </SafeAreaView>
     );
 }

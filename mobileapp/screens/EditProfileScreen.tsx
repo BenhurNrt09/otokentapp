@@ -1,21 +1,52 @@
-import { View, Text, TextInput, TouchableOpacity, ScrollView, Image, Alert } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, ScrollView, Image } from 'react-native';
 import React, { useState } from 'react';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useApp } from '../context/AppContext';
+import { useToast } from '../context/ToastContext';
+import * as ImagePicker from 'expo-image-picker';
 
 export default function EditProfileScreen() {
     const navigation = useNavigation();
     const { user, updateUser } = useApp();
+    const { showSuccessToast, showErrorToast } = useToast();
 
     const [name, setName] = useState(user.name);
     const [surname, setSurname] = useState(user.surname);
     const [email, setEmail] = useState(user.email);
 
     const handleSave = () => {
-        updateUser({ name, surname, email });
-        Alert.alert('Başarılı', 'Profil bilgileriniz güncellendi.');
-        navigation.goBack();
+        try {
+            updateUser({ name, surname, email });
+            showSuccessToast('Profil başarıyla güncellendi');
+            navigation.goBack();
+        } catch (error) {
+            showErrorToast('Profil güncellenemedi, tekrar deneyiniz');
+        }
+    };
+
+    const handlePickImage = async () => {
+        try {
+            const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+            if (!permission.granted) {
+                Alert.alert('İzin Gerekli', 'Galeri erişimi için izin gerekiyor.');
+                return;
+            }
+
+            const result = await ImagePicker.launchImageLibraryAsync({
+                mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                allowsEditing: true,
+                aspect: [1, 1],
+                quality: 0.7,
+            });
+
+            if (!result.canceled && result.assets && result.assets.length > 0) {
+                updateUser({ avatar: result.assets[0].uri });
+            }
+        } catch (e) {
+            console.error(e);
+            Alert.alert('Hata', 'Fotoğraf seçilirken bir hata oluştu.');
+        }
     };
 
     return (
@@ -32,16 +63,18 @@ export default function EditProfileScreen() {
             <ScrollView className="flex-1 p-4">
                 {/* Avatar Section */}
                 <View className="items-center mb-8 mt-4">
-                    <View className="w-28 h-28 bg-blue-50 rounded-full items-center justify-center mb-4 border-4 border-white shadow-sm relative overflow-hidden">
-                        {user.avatar ? (
-                            <Image source={{ uri: user.avatar }} className="w-full h-full" resizeMode="cover" />
-                        ) : (
-                            <Ionicons name="person" size={56} color="#2563eb" />
-                        )}
-                        <TouchableOpacity className="absolute bottom-0 right-0 bg-blue-600 p-2 rounded-full border-2 border-white">
-                            <Ionicons name="camera" size={16} color="white" />
-                        </TouchableOpacity>
-                    </View>
+                    <TouchableOpacity onPress={handlePickImage}>
+                        <View className="w-28 h-28 bg-blue-50 rounded-full items-center justify-center mb-4 border-4 border-white shadow-sm relative overflow-hidden">
+                            {user.avatar ? (
+                                <Image source={{ uri: user.avatar }} className="w-full h-full" resizeMode="cover" />
+                            ) : (
+                                <Ionicons name="person" size={56} color="#2563eb" />
+                            )}
+                            <View className="absolute bottom-0 right-0 bg-blue-600 p-2 rounded-full border-2 border-white">
+                                <Ionicons name="camera" size={16} color="white" />
+                            </View>
+                        </View>
+                    </TouchableOpacity>
                     <Text className="text-blue-600 font-medium">Fotoğrafı Değiştir</Text>
                 </View>
 

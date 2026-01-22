@@ -1,10 +1,39 @@
-import { View, Text, TouchableOpacity, ScrollView, TextInput, Alert } from 'react-native';
-import React from 'react';
+import { View, Text, TouchableOpacity, ScrollView, TextInput } from 'react-native';
+import React, { useState } from 'react';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
+import { useToast } from '../context/ToastContext';
 
 export default function LoginSecurityScreen() {
     const navigation = useNavigation();
+    const { showSuccessToast, showErrorToast } = useToast();
+
+    const [currentPassword, setCurrentPassword] = useState('');
+    const [newPassword, setNewPassword] = useState('');
+    const [confirmPassword, setConfirmPassword] = useState('');
+
+    const handlePasswordChange = () => {
+        if (!currentPassword || !newPassword || !confirmPassword) {
+            showErrorToast('Lütfen tüm alanları doldurun');
+            return;
+        }
+
+        if (newPassword !== confirmPassword) {
+            showErrorToast('Yeni şifreler eşleşmiyor');
+            return;
+        }
+
+        if (newPassword.length < 6) {
+            showErrorToast('Şifre en az 6 karakter olmalıdır');
+            return;
+        }
+
+        // TODO: Implement actual password change logic
+        showSuccessToast('Şifre başarıyla güncellendi');
+        setCurrentPassword('');
+        setNewPassword('');
+        setConfirmPassword('');
+    };
 
     return (
         <View className="flex-1 bg-slate-50">
@@ -24,6 +53,8 @@ export default function LoginSecurityScreen() {
                         <View>
                             <Text className="text-slate-500 text-sm font-medium mb-1.5 ml-1">Mevcut Şifre</Text>
                             <TextInput
+                                value={currentPassword}
+                                onChangeText={setCurrentPassword}
                                 secureTextEntry
                                 className="bg-slate-50 border border-gray-200 rounded-xl px-4 py-3 text-slate-900"
                                 placeholder="••••••"
@@ -32,6 +63,8 @@ export default function LoginSecurityScreen() {
                         <View>
                             <Text className="text-slate-500 text-sm font-medium mb-1.5 ml-1">Yeni Şifre</Text>
                             <TextInput
+                                value={newPassword}
+                                onChangeText={setNewPassword}
                                 secureTextEntry
                                 className="bg-slate-50 border border-gray-200 rounded-xl px-4 py-3 text-slate-900"
                                 placeholder="••••••"
@@ -40,6 +73,8 @@ export default function LoginSecurityScreen() {
                         <View>
                             <Text className="text-slate-500 text-sm font-medium mb-1.5 ml-1">Yeni Şifre (Tekrar)</Text>
                             <TextInput
+                                value={confirmPassword}
+                                onChangeText={setConfirmPassword}
                                 secureTextEntry
                                 className="bg-slate-50 border border-gray-200 rounded-xl px-4 py-3 text-slate-900"
                                 placeholder="••••••"
@@ -47,18 +82,13 @@ export default function LoginSecurityScreen() {
                         </View>
                     </View>
 
-                    <TouchableOpacity className="bg-blue-600 mt-6 py-3 rounded-xl items-center">
+                    <TouchableOpacity
+                        onPress={handlePasswordChange}
+                        className="bg-blue-600 mt-6 py-3 rounded-xl items-center"
+                    >
                         <Text className="text-white font-bold">Şifreyi Güncelle</Text>
                     </TouchableOpacity>
                 </View>
-
-                <TouchableOpacity
-                    onPress={() => Alert.alert('Hesabı Sil', 'Hesabınızı silmek istediğinize emin misiniz?', [{ text: 'İptal', style: 'cancel' }, { text: 'Evet, Sil', style: 'destructive' }])}
-                    className="bg-white p-4 rounded-xl shadow-sm border border-red-100 flex-row items-center gap-3"
-                >
-                    <Ionicons name="trash-outline" size={20} color="#dc2626" />
-                    <Text className="text-red-600 font-bold">Hesabımı Sil</Text>
-                </TouchableOpacity>
             </ScrollView>
         </View>
     );

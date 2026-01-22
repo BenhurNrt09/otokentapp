@@ -28,4 +28,6 @@ export type RootStackParamList = {
     HelpCenter: undefined;
     Terms: undefined;
     ChatDetail: { chat: any };
+    PrivacyPolicy: undefined;
+    CookiePolicy: undefined;
 };

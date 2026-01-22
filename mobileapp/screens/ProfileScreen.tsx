@@ -70,7 +70,7 @@ export default function ProfileScreen() {
 
     return (
         <View className="flex-1 bg-slate-50">
-            <Header />
+            <Header hideAds={true} />
             <ScrollView contentContainerStyle={{ paddingBottom: 20 }}>
                 {/* Profile Card */}
                 <View className="bg-white m-4 p-6 rounded-2xl shadow-sm items-center border border-gray-100">
