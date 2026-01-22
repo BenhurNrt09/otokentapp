@@ -1,210 +1,221 @@
-"use client";
+import { createClient } from '@/lib/supabase/server';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Users, Car, MessageSquare, Bell, Plus, Image, HelpCircle, FileText } from 'lucide-react';
+import Link from 'next/link';
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Users, Car, MessageSquare, Eye, TrendingUp, TrendingDown } from "lucide-react";
-import { useEffect, useState } from "react";
+export const dynamic = 'force-dynamic';
 
-interface DashboardStats {
-    totalUsers: number;
-    totalVehicles: number;
-    totalMessages: number;
-    totalViews: number;
-    userGrowth: number;
-    vehicleGrowth: number;
-}
+export default async function DashboardPage() {
+    const supabase = await createClient();
 
-export default function DashboardPage() {
-    const [stats, setStats] = useState<DashboardStats>({
-        totalUsers: 0,
-        totalVehicles: 0,
-        totalMessages: 0,
-        totalViews: 0,
-        userGrowth: 0,
-        vehicleGrowth: 0,
-    });
-    const [loading, setLoading] = useState(true);
+    // Fetch real statistics from Supabase
+    const [usersResult, vehiclesResult, messagesResult, notificationsResult] = await Promise.all([
+        supabase.from('users').select('*', { count: 'exact', head: true }),
+        supabase.from('vehicles').select('*', { count: 'exact', head: true }),
+        supabase.from('messages').select('*', { count: 'exact', head: true }),
+        supabase.from('notifications').select('*', { count: 'exact', head: true }),
+    ]);
 
-    useEffect(() => {
-        // TODO: Fetch real data from Supabase
-        // Mock data for now
-        setTimeout(() => {
-            setStats({
-                totalUsers: 1247,
-                totalVehicles: 832,
-                totalMessages: 3456,
-                totalViews: 12543,
-                userGrowth: 12.5,
-                vehicleGrowth: 8.3,
-            });
-            setLoading(false);
-        }, 500);
-    }, []);
+    const stats = {
+        users: usersResult.count || 0,
+        vehicles: vehiclesResult.count || 0,
+        messages: messagesResult.count || 0,
+        notifications: notificationsResult.count || 0,
+    };
 
-    const statsCards = [
+    // Fetch recent vehicles
+    const { data: recentVehicles } = await supabase
+        .from('vehicles')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(5);
+
+    // Fetch recent users
+    const { data: recentUsers } = await supabase
+        .from('users')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(5);
+
+    const quickActions = [
         {
-            title: "Toplam Kullanıcılar",
-            value: stats.totalUsers,
-            icon: Users,
-            growth: stats.userGrowth,
-            color: "text-blue-600",
-            bgColor: "bg-blue-50",
-        },
-        {
-            title: "Toplam İlanlar",
-            value: stats.totalVehicles,
+            title: 'Yeni Araç İlanı',
+            description: 'Araç ilanı ekle',
             icon: Car,
-            growth: stats.vehicleGrowth,
-            color: "text-green-600",
-            bgColor: "bg-green-50",
+            href: '/dashboard/vehicles/new',
+            color: 'text-green-600',
+            bgColor: 'bg-green-50',
+            hoverColor: 'hover:bg-green-100',
         },
         {
-            title: "Toplam Mesajlar",
-            value: stats.totalMessages,
-            icon: MessageSquare,
-            color: "text-purple-600",
-            bgColor: "bg-purple-50",
+            title: 'Yeni Reklam',
+            description: 'Reklam banneri ekle',
+            icon: Image,
+            href: '/dashboard/content/advertisements/new',
+            color: 'text-blue-600',
+            bgColor: 'bg-blue-50',
+            hoverColor: 'hover:bg-blue-100',
         },
         {
-            title: "Toplam Görüntüleme",
-            value: stats.totalViews,
-            icon: Eye,
-            color: "text-orange-600",
-            bgColor: "bg-orange-50",
+            title: 'Yeni SSS',
+            description: 'Soru-cevap ekle',
+            icon: HelpCircle,
+            href: '/dashboard/content/faqs/new',
+            color: 'text-purple-600',
+            bgColor: 'bg-purple-50',
+            hoverColor: 'hover:bg-purple-100',
+        },
+        {
+            title: 'Kullanıcılar',
+            description: 'Kullanıcıları yönet',
+            icon: Users,
+            href: '/dashboard/users',
+            color: 'text-orange-600',
+            bgColor: 'bg-orange-50',
+            hoverColor: 'hover:bg-orange-100',
         },
     ];
 
-    if (loading) {
-        return (
-            <div className="flex items-center justify-center h-96">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-            </div>
-        );
-    }
-
     return (
-        <div className="space-y-8">
-            {/* Header */}
-            <div>
-                <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
-                <p className="text-gray-600 mt-1">OtoKent Yönetim Paneline Hoş Geldiniz</p>
+        <div className="p-8">
+            <div className="mb-8">
+                <h1 className="text-3xl font-bold text-slate-900">Dashboard</h1>
+                <p className="text-slate-600 mt-1">OtoKent yönetim paneline hoş geldiniz</p>
             </div>
 
-            {/* Stats Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                {statsCards.map((stat, index) => (
-                    <Card key={index} className="hover:shadow-lg transition-shadow">
-                        <CardHeader className="flex flex-row items-center justify-between pb-2">
-                            <CardTitle className="text-sm font-medium text-gray-600">
-                                {stat.title}
-                            </CardTitle>
-                            <div className={`p-2 rounded-lg ${stat.bgColor}`}>
-                                <stat.icon className={`w-5 h-5 ${stat.color}`} />
-                            </div>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="text-2xl font-bold text-gray-900">
-                                {stat.value.toLocaleString()}
-                            </div>
-                            {stat.growth !== undefined && (
-                                <div className="flex items-center gap-1 mt-2">
-                                    {stat.growth > 0 ? (
-                                        <TrendingUp className="w-4 h-4 text-green-600" />
-                                    ) : (
-                                        <TrendingDown className="w-4 h-4 text-red-600" />
-                                    )}
-                                    <span
-                                        className={`text-sm font-medium ${stat.growth > 0 ? "text-green-600" : "text-red-600"
-                                            }`}
-                                    >
-                                        {stat.growth > 0 ? "+" : ""}
-                                        {stat.growth}%
-                                    </span>
-                                    <span className="text-sm text-gray-500">son 30 gün</span>
-                                </div>
-                            )}
-                        </CardContent>
-                    </Card>
-                ))}
-            </div>
-
-            {/* Recent Activity */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Statistics Cards */}
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4 mb-8">
                 <Card>
-                    <CardHeader>
-                        <CardTitle>Son Aktiviteler</CardTitle>
+                    <CardHeader className="flex flex-row items-center justify-between pb-2">
+                        <CardTitle className="text-sm font-medium text-slate-600">
+                            Toplam Kullanıcı
+                        </CardTitle>
+                        <Users className="w-4 h-4 text-blue-600" />
                     </CardHeader>
                     <CardContent>
-                        <div className="space-y-4">
-                            {[1, 2, 3, 4, 5].map((i) => (
-                                <div key={i} className="flex items-start gap-3 pb-3 border-b last:border-0">
-                                    <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center">
-                                        <Users className="w-4 h-4 text-blue-600" />
-                                    </div>
-                                    <div className="flex-1">
-                                        <p className="text-sm font-medium text-gray-900">
-                                            Yeni kullanıcı kaydı
-                                        </p>
-                                        <p className="text-xs text-gray-500">{i} saat önce</p>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
+                        <div className="text-2xl font-bold">{stats.users}</div>
+                        <p className="text-xs text-slate-500 mt-1">Kayıtlı kullanıcı sayısı</p>
                     </CardContent>
                 </Card>
 
                 <Card>
-                    <CardHeader>
-                        <CardTitle>Popüler İlanlar</CardTitle>
+                    <CardHeader className="flex flex-row items-center justify-between pb-2">
+                        <CardTitle className="text-sm font-medium text-slate-600">
+                            Toplam İlan
+                        </CardTitle>
+                        <Car className="w-4 h-4 text-green-600" />
                     </CardHeader>
                     <CardContent>
-                        <div className="space-y-4">
-                            {[1, 2, 3, 4, 5].map((i) => (
-                                <div key={i} className="flex items-start gap-3 pb-3 border-b last:border-0">
-                                    <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center">
-                                        <Car className="w-4 h-4 text-green-600" />
-                                    </div>
-                                    <div className="flex-1">
-                                        <p className="text-sm font-medium text-gray-900">
-                                            2024 BMW 3 Serisi
-                                        </p>
-                                        <div className="flex items-center gap-2 mt-1">
-                                            <Eye className="w-3 h-3 text-gray-400" />
-                                            <p className="text-xs text-gray-500">{i * 123} görüntüleme</p>
-                                        </div>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
+                        <div className="text-2xl font-bold">{stats.vehicles}</div>
+                        <p className="text-xs text-slate-500 mt-1">Aktif araç ilanı</p>
+                    </CardContent>
+                </Card>
+
+                <Card>
+                    <CardHeader className="flex flex-row items-center justify-between pb-2">
+                        <CardTitle className="text-sm font-medium text-slate-600">
+                            Mesajlar
+                        </CardTitle>
+                        <MessageSquare className="w-4 h-4 text-orange-600" />
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-2xl font-bold">{stats.messages}</div>
+                        <p className="text-xs text-slate-500 mt-1">Toplam mesaj sayısı</p>
+                    </CardContent>
+                </Card>
+
+                <Card>
+                    <CardHeader className="flex flex-row items-center justify-between pb-2">
+                        <CardTitle className="text-sm font-medium text-slate-600">
+                            Bildirimler
+                        </CardTitle>
+                        <Bell className="w-4 h-4 text-purple-600" />
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-2xl font-bold">{stats.notifications}</div>
+                        <p className="text-xs text-slate-500 mt-1">Gönderilen bildirim</p>
                     </CardContent>
                 </Card>
             </div>
 
             {/* Quick Actions */}
-            <Card>
+            <Card className="mb-8">
                 <CardHeader>
                     <CardTitle>Hızlı İşlemler</CardTitle>
                 </CardHeader>
                 <CardContent>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                        <button className="p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-blue-600 hover:bg-blue-50 transition-colors">
-                            <Users className="w-6 h-6 mx-auto mb-2 text-gray-600" />
-                            <p className="text-sm font-medium text-gray-900">Yeni Kullanıcı</p>
-                        </button>
-                        <button className="p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-green-600 hover:bg-green-50 transition-colors">
-                            <Car className="w-6 h-6 mx-auto mb-2 text-gray-600" />
-                            <p className="text-sm font-medium text-gray-900">Yeni İlan</p>
-                        </button>
-                        <button className="p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-purple-600 hover:bg-purple-50 transition-colors">
-                            <MessageSquare className="w-6 h-6 mx-auto mb-2 text-gray-600" />
-                            <p className="text-sm font-medium text-gray-900">Mesaj Gönder</p>
-                        </button>
-                        <button className="p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-orange-600 hover:bg-orange-50 transition-colors">
-                            <Eye className="w-6 h-6 mx-auto mb-2 text-gray-600" />
-                            <p className="text-sm font-medium text-gray-900">Raporlar</p>
-                        </button>
+                        {quickActions.map((action, index) => (
+                            <Link key={index} href={action.href}>
+                                <div className={`group p-6 border-2 border-slate-200 rounded-lg transition-all cursor-pointer ${action.hoverColor} hover:border-slate-300 hover:shadow-md`}>
+                                    <div className={`w-12 h-12 rounded-lg ${action.bgColor} flex items-center justify-center mb-3 group-hover:scale-110 transition-transform`}>
+                                        <action.icon className={`w-6 h-6 ${action.color}`} />
+                                    </div>
+                                    <p className="font-semibold text-slate-900 mb-1">{action.title}</p>
+                                    <p className="text-xs text-slate-500">{action.description}</p>
+                                </div>
+                            </Link>
+                        ))}
                     </div>
                 </CardContent>
             </Card>
+
+            {/* Recent Activity */}
+            <div className="grid gap-6 md:grid-cols-2">
+                {/* Recent Vehicles */}
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Son Eklenen İlanlar</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        {recentVehicles && recentVehicles.length > 0 ? (
+                            <div className="space-y-4">
+                                {recentVehicles.map((vehicle) => (
+                                    <div key={vehicle.id} className="flex items-center justify-between border-b pb-3 last:border-0">
+                                        <div>
+                                            <p className="font-medium">{vehicle.title || `${vehicle.brand} ${vehicle.model}`}</p>
+                                            <p className="text-sm text-slate-500">
+                                                {vehicle.price ? `${Number(vehicle.price).toLocaleString('tr-TR')} ₺` : 'Fiyat belirtilmemiş'}
+                                            </p>
+                                        </div>
+                                        <span className="text-xs text-slate-400">
+                                            {new Date(vehicle.created_at).toLocaleDateString('tr-TR')}
+                                        </span>
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <p className="text-sm text-slate-500">Henüz ilan bulunmuyor</p>
+                        )}
+                    </CardContent>
+                </Card>
+
+                {/* Recent Users */}
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Son Kayıt Olan Kullanıcılar</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        {recentUsers && recentUsers.length > 0 ? (
+                            <div className="space-y-4">
+                                {recentUsers.map((user) => (
+                                    <div key={user.id} className="flex items-center justify-between border-b pb-3 last:border-0">
+                                        <div>
+                                            <p className="font-medium">{user.name || 'İsimsiz'} {user.surname || ''}</p>
+                                            <p className="text-sm text-slate-500">{user.email}</p>
+                                        </div>
+                                        <span className="text-xs text-slate-400">
+                                            {new Date(user.created_at).toLocaleDateString('tr-TR')}
+                                        </span>
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <p className="text-sm text-slate-500">Henüz kullanıcı bulunmuyor</p>
+                        )}
+                    </CardContent>
+                </Card>
+            </div>
         </div>
     );
 }

@@ -30,3 +30,29 @@ export interface VehicleFormData {
     images: File[];
     status: VehicleStatus;
 }
+
+// User types
+export type UserRole = 'user' | 'admin' | 'moderator';
+
+export interface User {
+    id: string;
+    email: string;
+    name: string | null;
+    surname: string | null;
+    phone: string | null;
+    avatar_url: string | null;
+    role: UserRole;
+    is_active: boolean;
+    deleted_at: string | null;
+    created_at: string;
+    updated_at: string;
+}
+
+export interface UserFormData {
+    email: string;
+    name: string;
+    surname: string;
+    phone: string;
+    role: UserRole;
+    is_active: boolean;
+}
