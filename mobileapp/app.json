@@ -25,6 +25,22 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "plugins": [
+      "expo-font",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Galeriye erişim izni gerekiyor.",
+          "cameraPermission": "Kameraya erişim izni gerekiyor."
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Konum paylaşımı için izin gerekiyor."
+        }
+      ]
+    ]
   }
 }
