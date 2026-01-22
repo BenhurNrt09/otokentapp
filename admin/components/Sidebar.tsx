@@ -97,8 +97,7 @@ export default function Sidebar({ className }: SidebarProps) {
             <div className="flex items-center justify-between p-4 border-b">
                 {!isCollapsed && (
                     <Link href="/dashboard" className="flex items-center gap-2">
-                        <Car className="w-8 h-8 text-blue-600" />
-                        <span className="font-bold text-xl">OtoKent Admin</span>
+                        <img src="/logo.png" alt="OtoKent" className="w-12 h-12 object-contain" />
                     </Link>
                 )}
                 <button

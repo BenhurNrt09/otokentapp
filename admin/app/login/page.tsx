@@ -38,8 +38,8 @@ export default function LoginPage() {
         <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
             <div className="w-full max-w-md p-8 bg-white/10 backdrop-blur-lg rounded-2xl shadow-2xl border border-white/20">
                 <div className="text-center mb-8">
-                    <h1 className="text-4xl font-bold text-white mb-2">Otokent</h1>
-                    <p className="text-slate-300">Admin Panel Girişi</p>
+                    <img src="/logo.png" alt="OtoKent" className="w-24 h-24 mx-auto mb-4 object-contain" />
+                    <p className="text-slate-300 text-lg">Admin Panel Girişi</p>
                 </div>
 
                 <form onSubmit={handleLogin} className="space-y-6">
