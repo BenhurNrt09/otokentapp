@@ -9,15 +9,19 @@ import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
 import * as Location from 'expo-location';
 import * as FileSystem from 'expo-file-system/legacy';
+import { supabase } from '../lib/supabase';
+import { useApp } from '../context/AppContext';
 import { QUICK_REPLIES } from '../constants/mocks';
 
 export default function ChatDetailScreen() {
     const route = useRoute<any>();
     const navigation = useNavigation();
     const { chat } = route.params || {};
+    const { user, isLoggedIn } = useApp();
 
     const [messageText, setMessageText] = useState('');
-    const [messages, setMessages] = useState(chat?.messages || []);
+    const [messages, setMessages] = useState<any[]>([]);
+    const [loading, setLoading] = useState(true);
     const flatListRef = useRef<FlatList>(null);
     const [showAttachments, setShowAttachments] = useState(false);
     const [selectedImage, setSelectedImage] = useState<string | null>(null);
@@ -34,67 +38,97 @@ export default function ChatDetailScreen() {
     const isAudioAction = useRef(false);
 
     useEffect(() => {
-        if (flatListRef.current) {
-            setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100);
-        }
-    }, [messages]);
-
-    // Load messages from storage on mount
-    useEffect(() => {
         loadMessages();
+        const subscribe = subscribeToMessages();
+        return () => {
+            subscribe();
+        };
     }, []);
 
-    // Save messages to storage whenever they change
-    useEffect(() => {
-        if (messages.length > 0) {
-            saveMessages();
-        }
-    }, [messages]);
+    const subscribeToMessages = () => {
+        const channel = supabase
+            .channel(`chat_${chat.id}`)
+            .on(
+                'postgres_changes',
+                {
+                    event: 'INSERT',
+                    schema: 'public',
+                    table: 'messages',
+                    filter: `sender_id=eq.${chat.id},receiver_id=eq.${user.id}`
+                },
+                (payload) => {
+                    const newMsg = payload.new;
+                    const mapped = {
+                        id: newMsg.id,
+                        text: newMsg.content,
+                        sender: 'other',
+                        time: new Date(newMsg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                        type: newMsg.message_type || 'text',
+                        mediaUrl: newMsg.media_url
+                    };
+                    setMessages(prev => [...prev, mapped]);
+                }
+            )
+            .subscribe();
 
-    // Mark messages as read when user enters chat
-    useEffect(() => {
-        if (chat) {
-            markMessagesAsRead();
-        }
-    }, []); // Run only on mount
+        return () => {
+            supabase.removeChannel(channel);
+        };
+    };
 
     const loadMessages = async () => {
+        if (!isLoggedIn || !chat.id) return;
+        setLoading(true);
         try {
-            const storedMessages = await AsyncStorage.getItem(`chat_${chat?.id}_messages`);
-            if (storedMessages) {
-                setMessages(JSON.parse(storedMessages));
+            const { data, error } = await supabase
+                .from('messages')
+                .select('*')
+                .or(`and(sender_id.eq.${user.id},receiver_id.eq.${chat.id}),and(sender_id.eq.${chat.id},receiver_id.eq.${user.id})`)
+                .order('created_at', { ascending: true });
+
+            if (error) throw error;
+
+            if (data) {
+                const mappedMessages = data.map(msg => ({
+                    id: msg.id,
+                    text: msg.content,
+                    sender: msg.sender_id === user.id ? 'me' : 'other',
+                    time: new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                    type: msg.message_type || 'text',
+                    mediaUrl: msg.media_url
+                }));
+                setMessages(mappedMessages);
+
+                // Mark messages from other user as read
+                await markMessagesAsRead();
             }
         } catch (e) {
             console.error('Error loading messages:', e);
-        }
-    };
-
-    const saveMessages = async () => {
-        try {
-            await AsyncStorage.setItem(`chat_${chat?.id}_messages`, JSON.stringify(messages));
-        } catch (e) {
-            console.error('Error saving messages:', e);
+        } finally {
+            setLoading(false);
         }
     };
 
     const markMessagesAsRead = async () => {
-        // Mark all messages from the other user as read
-        setMessages((prev: any[]) =>
-            prev.map((msg: any) =>
-                msg.sender !== 'me' ? { ...msg, read: true } : msg
-            )
-        );
-        // Update chat's unread count to 0
-        if (chat.unreadCount && chat.unreadCount > 0) {
-            chat.unreadCount = 0;
-        }
-        // Save read status
+        if (!isLoggedIn || !chat.id) return;
         try {
-            await AsyncStorage.setItem(`chat_${chat?.id}_read`, 'true');
+            await supabase
+                .from('messages')
+                .update({ is_read: true })
+                .eq('sender_id', chat.id)
+                .eq('receiver_id', user.id)
+                .eq('is_read', false);
         } catch (e) {
-            console.error('Error saving read status:', e);
+            console.error('Error marking read:', e);
         }
     };
+
+    // Scroll effect when messages change
+    useEffect(() => {
+        if (flatListRef.current && messages.length > 0) {
+            setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 200);
+        }
+    }, [messages]);
 
 
     useEffect(() => {
@@ -227,18 +261,57 @@ export default function ChatDetailScreen() {
         sendMessage(messageText, 'text');
     };
 
-    const sendMessage = (content: string, type: 'text' | 'image' | 'voice' | 'location' | 'document') => {
-        const newMessage = {
-            id: Date.now().toString(),
-            text: type === 'text' ? content : (type === 'image' ? 'Fotoğraf' : type === 'voice' ? 'Sesli Mesaj' : type === 'location' ? 'Konum' : 'Belge'),
-            mediaUrl: (type === 'image' || type === 'voice' || type === 'location' || type === 'document') ? content : undefined,
-            sender: 'me',
-            time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-            type: type
-        };
-        setMessages((prev: any) => [...prev, newMessage]);
-        setMessageText('');
-        if (showAttachments) setShowAttachments(false);
+    const sendMessage = async (content: string, type: 'text' | 'image' | 'voice' | 'location' | 'document') => {
+        if (!isLoggedIn || user.id === 'guest') {
+            Alert.alert('Giriş Yapın', 'Mesaj göndermek için giriş yapmalısınız.');
+            return;
+        }
+
+        try {
+            let finalContent = content;
+            let mediaUrl = undefined;
+
+            if (type !== 'text') {
+                // If it's a media type, the 'content' passed is the URI
+                // In a production app, we would upload to Supabase Storage here
+                // For now, we'll store the local URI or handle accordingly
+                // (Uploading logic would go here)
+                mediaUrl = content;
+                finalContent = type === 'image' ? 'Fotoğraf' : type === 'voice' ? 'Sesli Mesaj' : type === 'location' ? 'Konum' : 'Belge';
+            }
+
+            const { data, error } = await supabase
+                .from('messages')
+                .insert([{
+                    sender_id: user.id,
+                    receiver_id: chat.id,
+                    content: finalContent,
+                    media_url: mediaUrl,
+                    message_type: type,
+                    is_read: false
+                }])
+                .select()
+                .single();
+
+            if (error) throw error;
+
+            if (data) {
+                const newMessage = {
+                    id: data.id,
+                    text: finalContent,
+                    mediaUrl: mediaUrl,
+                    sender: 'me',
+                    time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                    type: type
+                };
+                setMessages((prev: any) => [...prev, newMessage]);
+                setMessageText('');
+                if (showAttachments) setShowAttachments(false);
+            }
+        } catch (e) {
+            console.error('Error sending message:', e);
+            Alert.alert('Hata', 'Mesaj gönderilemedi.');
+        }
     };
 
     const handleQuickReply = (text: string) => {

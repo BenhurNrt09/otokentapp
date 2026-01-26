@@ -11,9 +11,10 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
-import { Trash2 } from 'lucide-react';
+import { Trash2, MessageSquare } from 'lucide-react';
 import { deleteMessage } from '@/actions/message-actions';
 import { useState } from 'react';
+import Link from 'next/link';
 
 interface MessageListProps {
     data: Message[];
@@ -64,12 +65,24 @@ export default function MessageList({ data }: MessageListProps) {
                     {data.map((msg) => (
                         <TableRow key={msg.id}>
                             <TableCell className="font-medium">
-                                {msg.sender?.name} {msg.sender?.surname}
-                                <div className="text-xs text-slate-500">{msg.sender?.email}</div>
+                                {msg.sender ? (
+                                    <>
+                                        {msg.sender.name} {msg.sender.surname}
+                                        <div className="text-xs text-slate-500">{msg.sender.email}</div>
+                                    </>
+                                ) : (
+                                    <span className="text-slate-400 italic">Bilinmeyen Kullanıcı</span>
+                                )}
                             </TableCell>
                             <TableCell>
-                                {msg.receiver?.name} {msg.receiver?.surname}
-                                <div className="text-xs text-slate-500">{msg.receiver?.email}</div>
+                                {msg.receiver ? (
+                                    <>
+                                        {msg.receiver.name} {msg.receiver.surname}
+                                        <div className="text-xs text-slate-500">{msg.receiver.email}</div>
+                                    </>
+                                ) : (
+                                    <span className="text-slate-400 italic">Bilinmeyen Alıcı</span>
+                                )}
                             </TableCell>
                             <TableCell className="max-w-md truncate">{msg.content}</TableCell>
                             <TableCell>
@@ -95,15 +108,25 @@ export default function MessageList({ data }: MessageListProps) {
                                 </div>
                             </TableCell>
                             <TableCell className="text-right">
-                                <Button
-                                    variant="destructive"
-                                    size="sm"
-                                    onClick={() => handleDelete(msg.id)}
-                                    disabled={loading === msg.id}
-                                >
-                                    <Trash2 className="w-4 h-4 mr-1" />
-                                    Sil
-                                </Button>
+                                <div className="flex items-center justify-end gap-2">
+                                    {msg.sender && (
+                                        <Link href={`/dashboard/messages/${msg.sender?.role === 'admin' ? msg.receiver_id : msg.sender_id}`}>
+                                            <Button variant="outline" size="sm">
+                                                <MessageSquare className="w-4 h-4 mr-1" />
+                                                Cevapla
+                                            </Button>
+                                        </Link>
+                                    )}
+                                    <Button
+                                        variant="destructive"
+                                        size="sm"
+                                        onClick={() => handleDelete(msg.id)}
+                                        disabled={loading === msg.id}
+                                    >
+                                        <Trash2 className="w-4 h-4 mr-1" />
+                                        Sil
+                                    </Button>
+                                </div>
                             </TableCell>
                         </TableRow>
                     ))}

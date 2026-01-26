@@ -1,10 +1,36 @@
+import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, ScrollView } from 'react-native';
-import React from 'react';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
+import { supabase } from '../lib/supabase';
 
 export default function TermsScreen() {
     const navigation = useNavigation();
+    const [policy, setPolicy] = useState<any>(null);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        loadPolicy();
+    }, []);
+
+    const loadPolicy = async () => {
+        try {
+            const { data, error } = await supabase
+                .from('policies')
+                .select('*')
+                .eq('type', 'terms')
+                .eq('is_active', true)
+                .single();
+
+            if (data) {
+                setPolicy(data);
+            }
+        } catch (e) {
+            console.error('Error loading policy:', e);
+        } finally {
+            setLoading(false);
+        }
+    };
 
     return (
         <View className="flex-1 bg-slate-50">
@@ -12,33 +38,24 @@ export default function TermsScreen() {
                 <TouchableOpacity onPress={() => navigation.goBack()} className="p-2 -ml-2">
                     <Ionicons name="arrow-back" size={24} color="#1e293b" />
                 </TouchableOpacity>
-                <Text className="text-lg font-bold text-slate-900">Kullanım Koşulları</Text>
+                <Text className="text-lg font-bold text-slate-900">{policy?.title || 'Kullanım Koşulları'}</Text>
                 <View className="w-8" />
             </View>
 
             <ScrollView className="flex-1 p-4">
                 <View className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 mb-8">
-                    <Text className="text-slate-900 font-bold mb-4">1. Giriş</Text>
-                    <Text className="text-slate-600 leading-6 mb-6">
-                        Otokent mobil uygulamasına hoş geldiniz. Bu uygulamayı kullanarak aşağıdaki kullanım koşullarını kabul etmiş olursunuz.
-                    </Text>
-
-                    <Text className="text-slate-900 font-bold mb-4">2. Hizmet Kapsamı</Text>
-                    <Text className="text-slate-600 leading-6 mb-6">
-                        Otokent, kullanıcılara araç ilanlarını inceleme, mesajlaşma ve profil oluşturma hizmetleri sunar.
-                    </Text>
-
-                    <Text className="text-slate-900 font-bold mb-4">3. Gizlilik</Text>
-                    <Text className="text-slate-600 leading-6 mb-6">
-                        Kişisel verileriniz KVKK kapsamında korunmaktadır. Detaylı bilgi için Gizlilik Politikamızı inceleyiniz.
-                    </Text>
-
-                    <Text className="text-slate-900 font-bold mb-4">4. Değişiklikler</Text>
-                    <Text className="text-slate-600 leading-6 mb-6">
-                        Otokent, bu koşulları dilediği zaman değiştirme hakkını saklı tutar.
-                    </Text>
-
-                    <Text className="text-slate-400 text-xs mt-4 text-center">Son Güncelleme: 20 Ocak 2026</Text>
+                    {loading ? (
+                        <Text className="text-slate-500 text-center py-10">Yükleniyor...</Text>
+                    ) : policy ? (
+                        <>
+                            <Text className="text-slate-600 leading-6 mb-6">
+                                {policy.content}
+                            </Text>
+                            <Text className="text-slate-400 text-xs mt-4 text-center">Son Güncelleme: {new Date(policy.updated_at).toLocaleDateString()}</Text>
+                        </>
+                    ) : (
+                        <Text className="text-slate-500 text-center py-10">İçerik bulunamadı.</Text>
+                    )}
                 </View>
             </ScrollView>
         </View>

@@ -58,14 +58,19 @@ const menuItems = [
         href: "/dashboard/notifications",
     },
     {
-        title: "İçerik Yönetimi",
+        title: "Reklam Görselleri",
         icon: FileText,
-        href: "/dashboard/content",
-        submenu: [
-            { title: "Reklam Görselleri", href: "/dashboard/content/advertisements" },
-            { title: "SSS", href: "/dashboard/content/faqs" },
-            { title: "Politikalar", href: "/dashboard/content/policies" },
-        ]
+        href: "/dashboard/content/advertisements",
+    },
+    {
+        title: "SSS",
+        icon: FileText,
+        href: "/dashboard/content/faqs",
+    },
+    {
+        title: "Politikalar",
+        icon: FileText,
+        href: "/dashboard/content/policies",
     },
     {
         title: "Ayarlar",

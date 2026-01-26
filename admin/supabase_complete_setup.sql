@@ -269,6 +269,22 @@ CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
 
+-- Auto-confirm email trigger
+CREATE OR REPLACE FUNCTION public.auto_confirm_email()
+RETURNS TRIGGER AS $$
+BEGIN
+  UPDATE auth.users
+  SET email_confirmed_at = NOW()
+  WHERE id = NEW.id;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+DROP TRIGGER IF EXISTS on_auth_user_created_confirm ON auth.users;
+CREATE TRIGGER on_auth_user_created_confirm
+  AFTER INSERT ON auth.users
+  FOR EACH ROW EXECUTE FUNCTION public.auto_confirm_email();
+
 -- ============================================================================
 -- 4. ENABLE RLS
 -- ============================================================================

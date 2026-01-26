@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useApp } from '../context/AppContext';
+import { supabase } from '../lib/supabase';
 
 export default function RegisterScreen() {
     const navigation = useNavigation<any>();
@@ -21,7 +22,9 @@ export default function RegisterScreen() {
     const [agreement2, setAgreement2] = useState(false); // Otokent services (Optional)
     const [agreement3, setAgreement3] = useState(false); // Marketing (Optional)
 
-    const handleRegister = () => {
+    const [loading, setLoading] = useState(false);
+
+    const handleRegister = async () => {
         if (!name || !surname || !email || !password || !confirmPassword) {
             Alert.alert('Hata', 'Lütfen tüm alanları doldurunuz.');
             return;
@@ -37,18 +40,58 @@ export default function RegisterScreen() {
             return;
         }
 
-        // Success
-        Alert.alert('Başarılı', 'Kaydınız oluşturuldu. Giriş yapılıyor...', [
-            {
-                text: 'Tamam',
-                onPress: () => login({
-                    name,
-                    surname,
+        try {
+            setLoading(true);
+            const { data, error } = await supabase.auth.signUp({
+                email,
+                password,
+                options: {
+                    data: {
+                        name,
+                        surname,
+                    }
+                }
+            });
+
+            if (error) throw error;
+
+            if (data.session) {
+                // Session cached locally or returned immediately
+                // AppContext listener will handle navigation
+            } else {
+                // Try to login immediately
+                const { error: signInError } = await supabase.auth.signInWithPassword({
                     email,
-                    avatar: undefined
-                })
+                    password,
+                });
+
+                if (signInError) {
+                    // Check specifically for email not confirmed, implying trigger might be slow
+                    if (signInError.message.includes('Email not confirmed') || signInError.message.includes('not confirmed')) {
+                        // Wait 1 second and retry
+                        await new Promise(resolve => setTimeout(resolve, 1000));
+                        const { error: retryError } = await supabase.auth.signInWithPassword({
+                            email,
+                            password,
+                        });
+
+                        if (retryError) {
+                            console.log('Auto-login retry failed:', retryError);
+                            Alert.alert('Bilgi', 'Kayıt başarılı. Lütfen giriş yapınız.');
+                            navigation.navigate('Login');
+                        }
+                    } else {
+                        Alert.alert('Bilgi', 'Kayıt başarılı. Lütfen giriş yapınız.');
+                        navigation.navigate('Login');
+                    }
+                }
             }
-        ]);
+        } catch (error: any) {
+            console.error('Registration error:', error);
+            Alert.alert('Kayıt Başarısız', error.message || 'Kayıt sırasında bir hata oluştu.');
+        } finally {
+            setLoading(false);
+        }
     };
 
     const CheckboxRow = ({ active, onPress, text, isLink, onLinkPress }: any) => (

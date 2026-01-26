@@ -4,10 +4,34 @@ import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import { RootStackParamList } from '../types';
 import { Ionicons } from '@expo/vector-icons';
 import { StatusBar } from 'expo-status-bar';
+import { ExpertiseMap } from '../components/ExpertiseMap';
 
 type DetailScreenRouteProp = RouteProp<RootStackParamList, 'Detail'>;
 
 const { width } = Dimensions.get('window');
+
+const LABELS: Record<string, string> = {
+    sahibinden_ilk: 'İlk Sahibinden',
+    sahibinden_ikinci: 'İkinci Sahibinden',
+    galeriden: 'Galeriden',
+    yetkili_bayiden: 'Yetkili Bayiden',
+    owner: 'Sahibinden',
+    dealer: 'Galeriden',
+    gallery: 'Yetkili Bayiden',
+    benzin: 'Benzin',
+    dizel: 'Dizel',
+    hibrit: 'Hibrit',
+    elektrik: 'Elektrik',
+    manuel: 'Manuel',
+    otomatik: 'Otomatik'
+};
+
+const DetailRow = ({ label, value }: { label: string; value: string | number | null | undefined }) => (
+    <View className="w-[47%] mb-3">
+        <Text className="text-slate-500 text-xs uppercase mb-1">{label}</Text>
+        <Text className="text-slate-900 font-bold">{value || '-'}</Text>
+    </View>
+);
 
 export default function DetailScreen() {
     const route = useRoute<DetailScreenRouteProp>();
@@ -19,14 +43,6 @@ export default function DetailScreen() {
         currency: 'TRY',
         maximumFractionDigits: 0,
     }).format(vehicle.price);
-
-    const handleCall = () => {
-        Linking.openURL('tel:+905555555555'); // Example phone
-    };
-
-    const handleWhatsapp = () => {
-        Linking.openURL('https://wa.me/905555555555'); // Example WP
-    };
 
     return (
         <View className="flex-1 bg-white">
@@ -41,7 +57,7 @@ export default function DetailScreen() {
             </TouchableOpacity>
 
             <ScrollView contentContainerStyle={{ paddingBottom: 100 }}>
-                {/* Image Carousel (Simple Horizontal Scroll) */}
+                {/* Image Carousel */}
                 <ScrollView horizontal pagingEnabled showsHorizontalScrollIndicator={false}>
                     {vehicle.images && vehicle.images.length > 0 ? (
                         vehicle.images.map((img, index) => (
@@ -67,28 +83,31 @@ export default function DetailScreen() {
                         {formattedPrice}
                     </Text>
 
-                    {/* Quick Stats Grid */}
-                    <View className="flex-row flex-wrap gap-4 mb-8">
-                        <View className="w-[47%] bg-slate-50 p-3 rounded-lg border border-slate-100">
-                            <Text className="text-slate-500 text-xs uppercase mb-1">Yıl</Text>
-                            <Text className="text-slate-900 font-bold">{vehicle.year}</Text>
-                        </View>
-                        <View className="w-[47%] bg-slate-50 p-3 rounded-lg border border-slate-100">
-                            <Text className="text-slate-500 text-xs uppercase mb-1">KM</Text>
-                            <Text className="text-slate-900 font-bold">{vehicle.mileage.toLocaleString()}</Text>
-                        </View>
-                        <View className="w-[47%] bg-slate-50 p-3 rounded-lg border border-slate-100">
-                            <Text className="text-slate-500 text-xs uppercase mb-1">Yakıt</Text>
-                            <Text className="text-slate-900 font-bold capitalize">{vehicle.fuel_type}</Text>
-                        </View>
-                        <View className="w-[47%] bg-slate-50 p-3 rounded-lg border border-slate-100">
-                            <Text className="text-slate-500 text-xs uppercase mb-1">Vites</Text>
-                            <Text className="text-slate-900 font-bold capitalize">{vehicle.gear_type}</Text>
+                    {/* Technical Details Grid */}
+                    <View className="bg-slate-50 p-4 rounded-xl border border-slate-100 mb-6">
+                        <Text className="text-lg font-bold text-slate-900 mb-4 pb-2 border-b border-slate-200">Teknik Detaylar</Text>
+                        <View className="flex-row flex-wrap justify-between">
+                            <DetailRow label="Yıl" value={vehicle.year} />
+                            <DetailRow label="KM" value={vehicle.mileage?.toLocaleString()} />
+                            <DetailRow label="Yakıt" value={LABELS[vehicle.fuel_type] || vehicle.fuel_type} />
+                            <DetailRow label="Vites" value={LABELS[vehicle.gear_type] || vehicle.gear_type} />
+                            <DetailRow label="Seri" value={vehicle.series} />
+                            <DetailRow label="Gövde Tipi" value={vehicle.body_type} />
+                            <DetailRow label="Renk" value={vehicle.color} />
+                            <DetailRow label="Kimden" value={LABELS[vehicle.from_who] || vehicle.from_who} />
+                            <DetailRow label="Çekiş" value={vehicle.drive_type} />
+                            <DetailRow label="Garanti" value={vehicle.warranty ? 'Var' : 'Yok'} />
+                            <DetailRow label="Ağır Hasarlı" value={vehicle.heavy_damage_record ? 'Evet' : 'Hayır'} />
                         </View>
                     </View>
 
+                    {/* Expertise Map */}
+                    {vehicle.expertise_data && (
+                        <ExpertiseMap data={vehicle.expertise_data} />
+                    )}
+
                     {/* Description */}
-                    <View>
+                    <View className="mt-6">
                         <Text className="text-lg font-bold text-slate-900 mb-3 block border-b border-slate-100 pb-2">
                             Açıklama
                         </Text>
@@ -104,17 +123,15 @@ export default function DetailScreen() {
                 <View className="flex-row gap-4">
                     <TouchableOpacity
                         onPress={() => {
-                            // Create a mock chat object for this vehicle/seller
                             const mockChat = {
                                 id: Date.now().toString(),
                                 user: {
                                     id: 'seller_1',
-                                    name: vehicle.seller_name || 'Satıcı',
-                                    avatar: null,
+                                    name: 'Satıcı',
                                     online: true
                                 },
                                 messages: [],
-                                vehicle: vehicle // Pass vehicle context if needed
+                                vehicle: vehicle
                             };
                             navigation.navigate('ChatDetail', { chat: mockChat });
                         }}

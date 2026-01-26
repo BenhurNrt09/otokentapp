@@ -7,6 +7,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useState } from 'react';
+import ImageUpload from '@/components/image-upload';
+
+import { toast } from "sonner";
+import { useEffect } from 'react';
 
 interface AdvertisementFormProps {
     advertisement: Advertisement;
@@ -15,6 +20,16 @@ interface AdvertisementFormProps {
 export default function AdvertisementForm({ advertisement }: AdvertisementFormProps) {
     const updateAdWithId = updateAdvertisement.bind(null, advertisement.id);
     const [state, formAction, isPending] = useActionState(updateAdWithId, null);
+
+    useEffect(() => {
+        if (state?.message) {
+            toast.error(state.message);
+        }
+    }, [state]);
+
+    const [imageUrls, setImageUrls] = useState<string[]>(
+        advertisement.image_url ? [advertisement.image_url] : []
+    );
 
     return (
         <form action={formAction}>
@@ -33,14 +48,20 @@ export default function AdvertisementForm({ advertisement }: AdvertisementFormPr
                         />
                     </div>
 
-                    <div className="space-y-2">
-                        <Label htmlFor="image_url">Görsel URL *</Label>
-                        <Input
-                            id="image_url"
+                    <div className="space-y-4">
+                        <Label>Reklam Görseli *</Label>
+                        <ImageUpload
+                            value={imageUrls}
+                            onChange={(urls) => setImageUrls(urls)}
+                            onRemove={(url) => setImageUrls(imageUrls.filter((current) => current !== url))}
+                            maxFiles={1}
+                            bucketName="vehicle-images"
+                            maxSizeInMB={10}
+                        />
+                        <input
+                            type="hidden"
                             name="image_url"
-                            type="url"
-                            defaultValue={advertisement.image_url}
-                            required
+                            value={imageUrls[0] || ''}
                         />
                         {state?.errors?.image_url && (
                             <p className="text-sm text-red-600">{state.errors.image_url}</p>

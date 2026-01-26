@@ -1,4 +1,4 @@
-export type VehicleStatus = 'yayinda' | 'satildi' | 'pasif';
+export type VehicleStatus = 'active' | 'sold' | 'pending' | 'archived';
 export type FuelType = 'benzin' | 'dizel' | 'hibrit' | 'elektrik';
 export type GearType = 'manuel' | 'otomatik';
 export type PartStatus = 'original' | 'painted' | 'changed' | 'local_painted';

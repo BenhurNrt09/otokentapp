@@ -1,12 +1,80 @@
+import React, { useState, useCallback } from 'react';
 import { View, Text, FlatList, TouchableOpacity, Image } from 'react-native';
-import React from 'react';
-import Header from '../components/Header';
-import { useNavigation } from '@react-navigation/native';
-import { MOCK_CHATS } from '../constants/mocks';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
+import { supabase } from '../lib/supabase';
+import { useApp } from '../context/AppContext';
+import Header from '../components/Header';
 
 export default function MessagesScreen() {
     const navigation = useNavigation<any>();
+    const { user, isLoggedIn } = useApp();
+    const [chats, setChats] = useState<any[]>([]);
+    const [loading, setLoading] = useState(true);
+
+    const loadChats = useCallback(async () => {
+        if (!isLoggedIn || user.id === 'guest') {
+            setLoading(false);
+            return;
+        }
+
+        try {
+            // Fetch all messages where user is sender or receiver
+            const { data, error } = await supabase
+                .from('messages')
+                .select(`
+                    *,
+                    sender:users!messages_sender_id_fkey(id, name, surname, avatar_url),
+                    receiver:users!messages_receiver_id_fkey(id, name, surname, avatar_url)
+                `)
+                .or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`)
+                .order('created_at', { ascending: false });
+
+            if (error) {
+                console.error('Error loading messages:', error);
+                return;
+            }
+
+            if (data) {
+                // Group by conversation partner
+                const conversations: any = {};
+                data.forEach((msg: any) => {
+                    const otherUser = msg.sender_id === user.id ? msg.receiver : msg.sender;
+                    if (!otherUser) return;
+
+                    if (!conversations[otherUser.id]) {
+                        conversations[otherUser.id] = {
+                            id: otherUser.id,
+                            user: {
+                                id: otherUser.id,
+                                name: `${otherUser.name} ${otherUser.surname}`,
+                                avatar: otherUser.avatar_url,
+                                online: false // Would need real-time presence for this
+                            },
+                            lastMessage: msg.content,
+                            timestamp: new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                            unreadCount: msg.receiver_id === user.id && !msg.is_read ? 1 : 0,
+                            rawTime: new Date(msg.created_at).getTime()
+                        };
+                    } else if (msg.receiver_id === user.id && !msg.is_read) {
+                        conversations[otherUser.id].unreadCount++;
+                    }
+                });
+
+                setChats(Object.values(conversations).sort((a: any, b: any) => b.rawTime - a.rawTime));
+            }
+        } catch (e) {
+            console.error('Error processing chats:', e);
+        } finally {
+            setLoading(false);
+        }
+    }, [isLoggedIn, user.id]);
+
+    useFocusEffect(
+        useCallback(() => {
+            loadChats();
+        }, [loadChats])
+    );
 
     const renderChat = ({ item }: any) => (
         <TouchableOpacity
@@ -49,10 +117,12 @@ export default function MessagesScreen() {
         <View className="flex-1 bg-slate-50">
             <Header />
             <FlatList
-                data={MOCK_CHATS}
+                data={chats}
                 renderItem={renderChat}
                 keyExtractor={item => item.id}
                 className="flex-1"
+                refreshing={loading}
+                onRefresh={loadChats}
                 ListEmptyComponent={
                     <View className="flex-1 items-center justify-center pt-20">
                         <Ionicons name="chatbubbles-outline" size={64} color="#cbd5e1" />

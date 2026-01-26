@@ -26,11 +26,11 @@ const VehicleSchema = z.object({
     is_disabled_friendly: z.coerce.boolean(),
     exchangeable: z.coerce.boolean(),
     video_call_available: z.coerce.boolean(),
-    from_who: z.enum(['owner', 'dealer', 'gallery']),
+    from_who: z.enum(['sahibinden_ilk', 'sahibinden_ikinci', 'galeriden', 'yetkili_bayiden']),
     description: z.string().optional(),
     images: z.array(z.string()),
     expertise_data: z.any(),
-    status: z.enum(['yayinda', 'satildi', 'pasif']),
+    status: z.enum(['active', 'sold', 'pending', 'archived']),
 });
 
 export async function createVehicle(prevState: any, formData: FormData) {
@@ -72,7 +72,10 @@ export async function createVehicle(prevState: any, formData: FormData) {
     }
 
     const { error } = await supabase.from('vehicles').insert([
-        validatedFields.data,
+        {
+            ...validatedFields.data,
+            title: `${validatedFields.data.brand} ${validatedFields.data.model} ${validatedFields.data.series || ''} ${validatedFields.data.year}`.trim(),
+        },
     ]);
 
     if (error) {
@@ -127,7 +130,10 @@ export async function updateVehicle(id: string, prevState: any, formData: FormDa
     try {
         const { error } = await supabase
             .from('vehicles')
-            .update(validatedFields.data)
+            .update({
+                ...validatedFields.data,
+                title: `${validatedFields.data.brand} ${validatedFields.data.model} ${validatedFields.data.series || ''} ${validatedFields.data.year}`.trim(),
+            })
             .eq('id', id);
 
         if (error) {

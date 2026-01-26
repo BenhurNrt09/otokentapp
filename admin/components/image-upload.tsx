@@ -10,9 +10,9 @@ interface ImageUploadProps {
     onChange: (value: string[]) => void;
     onRemove: (value: string) => void;
     maxFiles?: number;
+    bucketName?: string;
 }
 
-const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 const ACCEPTED_IMAGE_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
 
 export default function ImageUpload({
@@ -20,7 +20,10 @@ export default function ImageUpload({
     onChange,
     onRemove,
     maxFiles = 10,
-}: ImageUploadProps) {
+    bucketName = 'vehicle-images',
+    maxSizeInMB = 5,
+}: ImageUploadProps & { maxSizeInMB?: number }) {
+    const MAX_FILE_SIZE = maxSizeInMB * 1024 * 1024;
     const [isUploading, setIsUploading] = useState(false);
     const [uploadProgress, setUploadProgress] = useState(0);
     const supabase = createClient();
@@ -52,7 +55,7 @@ export default function ImageUpload({
 
                     // Validate file size
                     if (file.size > MAX_FILE_SIZE) {
-                        alert(`${file.name} çok büyük. Maksimum dosya boyutu 5MB.`);
+                        alert(`${file.name} çok büyük. Maksimum dosya boyutu ${maxSizeInMB}MB.`);
                         continue;
                     }
 
@@ -61,7 +64,7 @@ export default function ImageUpload({
                     const filePath = `${fileName}`;
 
                     const { error: uploadError, data } = await supabase.storage
-                        .from('vehicle-images')
+                        .from(bucketName)
                         .upload(filePath, file);
 
                     if (uploadError) {
@@ -71,7 +74,7 @@ export default function ImageUpload({
 
                     const {
                         data: { publicUrl },
-                    } = supabase.storage.from('vehicle-images').getPublicUrl(data.path);
+                    } = supabase.storage.from(bucketName).getPublicUrl(data.path);
 
                     newUrls.push(publicUrl);
                     setUploadProgress(Math.round(((i + 1) / totalFiles) * 100));
@@ -166,7 +169,7 @@ export default function ImageUpload({
                                         Fotoğraf Yüklemek İçin Tıklayın veya Sürükleyin
                                     </span>
                                     <span className="text-xs text-slate-500 mt-1 block">
-                                        JPG, PNG, WEBP (Max 5MB) • {value.length}/{maxFiles} yüklendi
+                                        JPG, PNG, WEBP (Max {maxSizeInMB}MB) • {value.length}/{maxFiles} yüklendi
                                     </span>
                                 </div>
                             </>

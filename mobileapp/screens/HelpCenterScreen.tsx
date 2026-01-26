@@ -1,19 +1,50 @@
-import { View, Text, TouchableOpacity, ScrollView, Platform } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, Platform, Alert } from 'react-native';
 import React, { useState } from 'react';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { MOCK_CHATS } from '../constants/mocks';
+import { supabase } from '../lib/supabase';
 
 export default function HelpCenterScreen() {
     const navigation = useNavigation<any>();
     const [expandedFAQ, setExpandedFAQ] = useState<number | null>(null);
+    const [loading, setLoading] = useState(false);
 
-    const handleStartChat = () => {
-        const supportChat = MOCK_CHATS.find(c => c.id === '3');
-        if (supportChat) {
-            navigation.navigate('ChatDetail', { chat: supportChat });
-        } else {
-            navigation.navigate('MainTabs', { screen: 'Messages' });
+    const handleStartChat = async () => {
+        try {
+            setLoading(true);
+            // Fetch the first admin user to be the support agent
+            const { data, error } = await supabase
+                .from('users')
+                .select('*')
+                .eq('role', 'admin')
+                .limit(1)
+                .single();
+
+            if (data) {
+                // Determine name based on available fields
+                const name = data.name || 'OtoKent';
+                const surname = data.surname || 'Destek';
+
+                navigation.navigate('ChatDetail', {
+                    chat: {
+                        id: data.id,
+                        user: {
+                            id: data.id,
+                            name: `${name} ${surname}`,
+                            avatar: data.avatar_url,
+                            isSupport: true
+                        }
+                    }
+                });
+            } else {
+                Alert.alert('Hata', 'Destek ekibine şu anda ulaşılamıyor.');
+            }
+        } catch (error) {
+            console.error('Error starting chat:', error);
+            Alert.alert('Hata', 'Bir hata oluştu.');
+        } finally {
+            setLoading(false);
         }
     };
 

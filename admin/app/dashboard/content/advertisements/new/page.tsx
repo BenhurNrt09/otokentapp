@@ -9,9 +9,22 @@ import { Switch } from '@/components/ui/switch';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
+import { useState } from 'react';
+import ImageUpload from '@/components/image-upload';
+
+import { toast } from "sonner";
+import { useEffect } from 'react';
 
 export default function NewAdvertisementPage() {
     const [state, formAction, isPending] = useActionState(createAdvertisement, null);
+
+    useEffect(() => {
+        if (state?.message) {
+            toast.error(state.message);
+        }
+    }, [state]);
+
+    const [imageUrls, setImageUrls] = useState<string[]>([]);
 
     return (
         <div className="p-8">
@@ -37,14 +50,20 @@ export default function NewAdvertisementPage() {
                             <Input id="title" name="title" placeholder="Reklam başlığı (opsiyonel)" />
                         </div>
 
-                        <div className="space-y-2">
-                            <Label htmlFor="image_url">Görsel URL *</Label>
-                            <Input
-                                id="image_url"
+                        <div className="space-y-4">
+                            <Label>Reklam Görseli *</Label>
+                            <ImageUpload
+                                value={imageUrls}
+                                onChange={(urls) => setImageUrls(urls)}
+                                onRemove={(url) => setImageUrls(imageUrls.filter((current) => current !== url))}
+                                maxFiles={1}
+                                bucketName="vehicle-images"
+                                maxSizeInMB={10}
+                            />
+                            <input
+                                type="hidden"
                                 name="image_url"
-                                type="url"
-                                placeholder="https://example.com/image.jpg"
-                                required
+                                value={imageUrls[0] || ''}
                             />
                             {state?.errors?.image_url && (
                                 <p className="text-sm text-red-600">{state.errors.image_url}</p>

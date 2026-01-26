@@ -20,7 +20,7 @@ const NotificationSchema = z.object({
     title: z.string().min(1, 'Başlık zorunludur'),
     message: z.string().min(1, 'Mesaj zorunludur'),
     type: z.enum(['message', 'vehicle', 'system', 'promotion']),
-    action_url: z.string().url('Geçerli bir URL girin').optional().or(z.literal('')),
+    action_url: z.string().url('Geçerli bir URL girin').optional().or(z.literal('')).nullable(),
 });
 
 export async function getNotifications() {
@@ -46,7 +46,7 @@ export async function createNotification(prevState: any, formData: FormData) {
         title: formData.get('title'),
         message: formData.get('message'),
         type: formData.get('type'),
-        action_url: formData.get('action_url') || null,
+        action_url: formData.get('action_url') ? formData.get('action_url') : null,
     };
 
     const validatedFields = NotificationSchema.safeParse(rawData);

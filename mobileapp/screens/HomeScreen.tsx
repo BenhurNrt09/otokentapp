@@ -5,6 +5,7 @@ import { Vehicle } from '../types';
 import VehicleCard from '../components/VehicleCard';
 import Header from '../components/Header';
 import { useApp } from '../context/AppContext';
+import AdBanner from '../components/AdBanner';
 
 export default function HomeScreen() {
     const { searchQuery } = useApp();
@@ -12,13 +13,26 @@ export default function HomeScreen() {
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
 
+    const [ads, setAds] = useState<any[]>([]);
+
     const fetchVehicles = async () => {
         try {
             setLoading(true);
+
+            // Fetch Ads
+            const { data: adsData } = await supabase
+                .from('advertisements')
+                .select('*')
+                .eq('is_active', true)
+                .order('display_order', { ascending: true });
+
+            if (adsData) setAds(adsData);
+
+            // Fetch Vehicles
             let query = supabase
                 .from('vehicles')
                 .select('*')
-                .eq('status', 'yayinda') // Only show active vehicles
+                .eq('status', 'active') // Only show active vehicles
                 .order('created_at', { ascending: false });
 
             if (searchQuery) {
@@ -57,8 +71,13 @@ export default function HomeScreen() {
             <FlatList
                 data={vehicles}
                 keyExtractor={(item) => item.id}
+                ListHeaderComponent={
+                    <View>
+                        <AdBanner data={ads} />
+                    </View>
+                }
                 renderItem={({ item }) => <VehicleCard vehicle={item} />}
-                contentContainerStyle={{ padding: 16, paddingBottom: 100 }}
+                contentContainerStyle={{ paddingBottom: 100 }}
                 refreshControl={
                     <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
                 }

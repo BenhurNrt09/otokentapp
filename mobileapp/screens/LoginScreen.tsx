@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useApp } from '../context/AppContext';
+import { supabase } from '../lib/supabase';
 
 export default function LoginScreen() {
     const navigation = useNavigation<any>();
@@ -14,16 +15,44 @@ export default function LoginScreen() {
     const [keepSignedIn, setKeepSignedIn] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
 
-    const handleLogin = () => {
+    const [loading, setLoading] = useState(false);
+
+    const handleLogin = async () => {
         // Basic validation
         if (!email || !password) {
             Alert.alert('Hata', 'Lütfen e-posta ve şifrenizi giriniz.');
             return;
         }
 
-        // In a real app, we would validate credentials here.
-        // For this prototype, we just log in.
-        login();
+        try {
+            setLoading(true);
+            const { error } = await supabase.auth.signInWithPassword({
+                email,
+                password,
+            });
+
+            if (error) throw error;
+
+            // AppContext listener will handle the state update
+        } catch (error: any) {
+            console.error('Login error:', error);
+            if (error.message.includes('Invalid login credentials')) {
+                Alert.alert(
+                    'Giriş Başarısız',
+                    'E-posta veya şifre hatalı. Hesabınız yoksa lütfen kayıt olunuz.',
+                    [
+                        { text: 'Tamam', style: 'cancel' },
+                        { text: 'Kayıt Ol', onPress: () => navigation.navigate('Register') }
+                    ]
+                );
+            } else if (error.message.includes('Email not confirmed')) {
+                Alert.alert('Giriş Başarısız', 'E-posta adresiniz doğrulanmamış. Sistem yöneticisi ile iletişime geçin.');
+            } else {
+                Alert.alert('Giriş Başarısız', error.message || 'E-posta veya şifre hatalı.');
+            }
+        } finally {
+            setLoading(false);
+        }
     };
 
     return (

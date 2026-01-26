@@ -1,8 +1,11 @@
+// Support user ID - должен совпадать с ID админа в базе
+export const SUPPORT_USER_ID = '00000000-0000-0000-0000-000000000001';
+
 export const MOCK_CHATS = [
     {
-        id: '3',
+        id: SUPPORT_USER_ID,
         user: {
-            id: 'u3',
+            id: SUPPORT_USER_ID,
             name: 'Otokent Destek',
             avatar: null, // Default icon
             online: true,
@@ -11,7 +14,7 @@ export const MOCK_CHATS = [
         lastMessage: 'OtoKent\'e Hoş Geldiniz!',
         timestamp: 'Bugün',
         unreadCount: 0,
-        messages: []  // Messages will be dynamically loaded from AsyncStorage
+        messages: []  // Messages will be dynamically loaded from Supabase
     },
 ];
 

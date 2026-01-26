@@ -1,11 +1,12 @@
-import { View, Image, Text, TouchableOpacity, TextInput, Dimensions } from 'react-native';
-import React, { useState } from 'react';
+import { View, Image, Text, TouchableOpacity, TextInput, Dimensions, ActivityIndicator } from 'react-native';
+import React, { useState, useEffect } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types';
 import { useApp } from '../context/AppContext';
+import { supabase } from '../lib/supabase';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -13,15 +14,61 @@ interface HeaderProps {
     hideAds?: boolean;
 }
 
+interface Advertisement {
+    id: string;
+    title: string | null;
+    image_url: string;
+    link_url: string | null;
+    is_active: boolean;
+}
+
 export default function Header({ hideAds = false }: HeaderProps) {
     const navigation = useNavigation<NavigationProp>();
-    const { searchQuery, setSearchQuery, currentAdIndex } = useApp();
+    const { searchQuery, setSearchQuery, currentAdIndex, setCurrentAdIndex } = useApp();
     const [isSearchVisible, setIsSearchVisible] = useState(false);
+    const [advertisements, setAdvertisements] = useState<Advertisement[]>([]);
+    const [loading, setLoading] = useState(true);
 
-    const ads = [
-        require('../assets/reklam1.png'),
-        require('../assets/reklam2.png'),
-    ];
+    // Fetch advertisements from Supabase
+    useEffect(() => {
+        fetchAdvertisements();
+    }, []);
+
+    const fetchAdvertisements = async () => {
+        try {
+            const { data, error } = await supabase
+                .from('advertisements')
+                .select('*')
+                .eq('is_active', true)
+                .order('display_order', { ascending: true });
+
+            if (error) {
+                console.error('Error fetching advertisements:', error);
+                return;
+            }
+
+            if (data && data.length > 0) {
+                setAdvertisements(data);
+            }
+        } catch (error) {
+            console.error('Error:', error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // Auto-rotate ads every 5 seconds
+    useEffect(() => {
+        if (advertisements.length === 0) return;
+
+        const interval = setInterval(() => {
+            setCurrentAdIndex((prev) => (prev + 1) % advertisements.length);
+        }, 5000);
+
+        return () => clearInterval(interval);
+    }, [advertisements.length]);
+
+    const currentAd = advertisements[currentAdIndex];
 
     return (
         <SafeAreaView edges={['top']} className="bg-white shadow-sm z-50">
@@ -30,7 +77,7 @@ export default function Header({ hideAds = false }: HeaderProps) {
                 <View className="flex-row items-center flex-1">
                     <Image
                         source={require('../assets/logo.png')}
-                        className="w-20 h-8"
+                        className="w-28 h-11"
                         resizeMode="contain"
                     />
                 </View>
@@ -63,18 +110,29 @@ export default function Header({ hideAds = false }: HeaderProps) {
                 </View>
             )}
 
-            {/* Ad Space - Auto-rotating */}
+            {/* Ad Space - From Supabase */}
             {!hideAds && (
                 <View style={{
                     height: 160,
                     width: Dimensions.get('window').width,
-                    overflow: 'hidden'
+                    overflow: 'hidden',
+                    backgroundColor: '#f1f5f9'
                 }}>
-                    <Image
-                        source={ads[currentAdIndex]}
-                        style={{ width: '100%', height: '100%' }}
-                        resizeMode="cover"
-                    />
+                    {loading ? (
+                        <View className="flex-1 items-center justify-center">
+                            <ActivityIndicator size="small" color="#3b82f6" />
+                        </View>
+                    ) : currentAd ? (
+                        <Image
+                            source={{ uri: currentAd.image_url }}
+                            style={{ width: '100%', height: '100%' }}
+                            resizeMode="cover"
+                        />
+                    ) : (
+                        <View className="flex-1 items-center justify-center">
+                            <Text className="text-slate-400 text-sm">Reklam bulunmuyor</Text>
+                        </View>
+                    )}
                 </View>
             )}
         </SafeAreaView>

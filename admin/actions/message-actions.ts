@@ -16,11 +16,13 @@ export interface Message {
         name: string | null;
         surname: string | null;
         email: string;
+        role: string;
     };
     receiver?: {
         name: string | null;
         surname: string | null;
         email: string;
+        role: string;
     };
 }
 
@@ -30,8 +32,8 @@ export async function getMessages() {
         .from('messages')
         .select(`
             *,
-            sender:sender_id(name, surname, email),
-            receiver:receiver_id(name, surname, email)
+            sender:sender_id(name, surname, email, role),
+            receiver:receiver_id(name, surname, email, role)
         `)
         .order('created_at', { ascending: false })
         .limit(100);

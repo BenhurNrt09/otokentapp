@@ -31,6 +31,7 @@ import * as z from 'zod';
 import ExpertiseSelector from './vehicle-expertise-selector';
 import { cn } from '@/lib/utils';
 import { ChevronLeft, ChevronRight, Save } from 'lucide-react';
+import { toast } from "sonner";
 
 const partStatusEnum = z.enum(['original', 'painted', 'changed', 'local_painted']);
 
@@ -57,7 +58,7 @@ const formSchema = z.object({
     description: z.string().default(''),
     images: z.array(z.string()).min(1, 'En az bir resim yüklemelisiniz'),
     expertise_data: z.record(z.string(), z.any()).default({}),
-    status: z.enum(['yayinda', 'satildi', 'pasif']),
+    status: z.enum(['active', 'sold', 'pending', 'archived']),
 });
 
 type VehicleFormValues = z.infer<typeof formSchema>;
@@ -106,7 +107,7 @@ export default function VehicleForm({ initialData }: VehicleFormProps) {
             description: initialData?.description || '',
             images: initialData?.images || [],
             expertise_data: initialData?.expertise_data || {},
-            status: initialData?.status === 'yayinda' || initialData?.status === 'satildi' || initialData?.status === 'pasif' ? initialData.status : 'yayinda',
+            status: initialData?.status === 'active' || initialData?.status === 'sold' || initialData?.status === 'pending' || initialData?.status === 'archived' ? initialData.status : 'active',
         },
     });
 
@@ -121,10 +122,32 @@ export default function VehicleForm({ initialData }: VehicleFormProps) {
                 }
             });
 
-            if (initialData?.id) {
-                await updateVehicle(initialData.id, null, formData);
-            } else {
-                await createVehicle(null, formData);
+            let result;
+            try {
+                if (initialData?.id) {
+                    result = await updateVehicle(initialData.id, null, formData);
+                } else {
+                    result = await createVehicle(null, formData);
+                }
+
+                if (result?.message) {
+                    toast.error(result.message);
+                    if (result?.errors) {
+                        // Optional: Log detailed errors or show specific field errors
+                        console.error(result.errors);
+                    }
+                } else {
+                    // Success case (usually redirects, but we can show a toast just in case or before redirect)
+                    toast.success(initialData ? "Araç güncellendi." : "İlan yayınlandı.");
+                }
+            } catch (error) {
+                // Ignore redirect errors as they are expected
+                if ((error as any)?.digest?.includes('NEXT_REDIRECT')) {
+                    toast.success(initialData ? "Araç güncellendi." : "İlan yayınlandı.");
+                    return;
+                }
+                toast.error("Bir hata oluştu.");
+                console.error(error);
             }
         });
     };
@@ -387,9 +410,10 @@ export default function VehicleForm({ initialData }: VehicleFormProps) {
                                         <Select onValueChange={field.onChange} defaultValue={field.value}>
                                             <FormControl><SelectTrigger><SelectValue placeholder="Seçiniz" /></SelectTrigger></FormControl>
                                             <SelectContent>
-                                                <SelectItem value="yayinda">Yayında</SelectItem>
-                                                <SelectItem value="satildi">Satıldı</SelectItem>
-                                                <SelectItem value="pasif">Pasif / Arşiv</SelectItem>
+                                                <SelectItem value="active">Yayında</SelectItem>
+                                                <SelectItem value="sold">Satıldı</SelectItem>
+                                                <SelectItem value="pending">Beklemede</SelectItem>
+                                                <SelectItem value="archived">Arşiv</SelectItem>
                                             </SelectContent>
                                         </Select>
                                         <FormMessage />

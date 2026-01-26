@@ -48,7 +48,12 @@ export async function getUserById(id: string) {
         .single();
 
     if (error) {
-        console.error('Error fetching user:', error);
+        console.error('Error fetching user:', {
+            message: error.message,
+            details: error.details,
+            hint: error.hint,
+            code: error.code,
+        });
         return null;
     }
 
