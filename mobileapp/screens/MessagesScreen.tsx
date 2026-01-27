@@ -31,7 +31,7 @@ export default function MessagesScreen() {
                 .order('created_at', { ascending: false });
 
             if (error) {
-                console.error('Error loading messages:', error);
+                console.error('Mesajlar yükleme hatası:', error);
                 return;
             }
 
@@ -61,10 +61,42 @@ export default function MessagesScreen() {
                     }
                 });
 
-                setChats(Object.values(conversations).sort((a: any, b: any) => b.rawTime - a.rawTime));
+
+                // Check for support chat
+                const SUPPORT_ID = '00000000-0000-0000-0000-000000000001';
+                let supportChat = conversations[SUPPORT_ID];
+
+                if (!supportChat) {
+                    supportChat = {
+                        id: SUPPORT_ID,
+                        user: {
+                            id: SUPPORT_ID,
+                            name: 'OtoKent',
+                            surname: 'Destek',
+                            avatar: null,
+                            isSupport: true,
+                            online: true
+                        },
+                        lastMessage: 'Size nasıl yardımcı olabiliriz?',
+                        timestamp: '',
+                        unreadCount: 0,
+                        rawTime: Date.now() + 1000000000 // Always top
+                    };
+                } else {
+                    // Update support chat to make sure it's pinned/marked properly if needed
+                    // But we will just ensure it's at the top by filtering it out from sorted list and manual unshift or sorting trick
+                    supportChat.user.isSupport = true; // Ensure isSupport is true
+                    supportChat.rawTime = Date.now() + 1000000000; // Force top
+                }
+
+                // Add support chat to conversations map if not present (for the array conversion)
+                conversations[SUPPORT_ID] = supportChat;
+
+                const sortedChats = Object.values(conversations).sort((a: any, b: any) => b.rawTime - a.rawTime);
+                setChats(sortedChats);
             }
         } catch (e) {
-            console.error('Error processing chats:', e);
+            console.error('Sohbetler işleme hatası:', e);
         } finally {
             setLoading(false);
         }

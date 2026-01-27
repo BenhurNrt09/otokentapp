@@ -122,7 +122,6 @@ function TabNavigator() {
         component={ProfileScreen}
         options={{
           title: 'Profil',
-          tabBarBadge: unreadNotificationCount > 0 ? unreadNotificationCount : undefined
         }}
       />
     </Tab.Navigator>

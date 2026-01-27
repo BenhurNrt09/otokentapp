@@ -7,6 +7,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types';
 import { useApp } from '../context/AppContext';
 import { supabase } from '../lib/supabase';
+import AdBanner from './AdBanner'; // Import AdBanner
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -20,11 +21,12 @@ interface Advertisement {
     image_url: string;
     link_url: string | null;
     is_active: boolean;
+    display_order: number; // Ensure this matches types
 }
 
 export default function Header({ hideAds = false }: HeaderProps) {
     const navigation = useNavigation<NavigationProp>();
-    const { searchQuery, setSearchQuery, currentAdIndex, setCurrentAdIndex } = useApp();
+    const { searchQuery, setSearchQuery, unreadNotificationCount } = useApp();
     const [isSearchVisible, setIsSearchVisible] = useState(false);
     const [advertisements, setAdvertisements] = useState<Advertisement[]>([]);
     const [loading, setLoading] = useState(true);
@@ -57,19 +59,6 @@ export default function Header({ hideAds = false }: HeaderProps) {
         }
     };
 
-    // Auto-rotate ads every 5 seconds
-    useEffect(() => {
-        if (advertisements.length === 0) return;
-
-        const interval = setInterval(() => {
-            setCurrentAdIndex((prev) => (prev + 1) % advertisements.length);
-        }, 5000);
-
-        return () => clearInterval(interval);
-    }, [advertisements.length]);
-
-    const currentAd = advertisements[currentAdIndex];
-
     return (
         <SafeAreaView edges={['top']} className="bg-white shadow-sm z-50">
             <View className="flex-row items-center justify-between px-4 py-3 border-b border-gray-100">
@@ -87,8 +76,13 @@ export default function Header({ hideAds = false }: HeaderProps) {
                     <TouchableOpacity onPress={() => setIsSearchVisible(!isSearchVisible)} className="p-2">
                         <Ionicons name="search-outline" size={24} color="#1e293b" />
                     </TouchableOpacity>
-                    <TouchableOpacity onPress={() => navigation.navigate('Notifications')} className="p-2">
+                    <TouchableOpacity onPress={() => navigation.navigate('Notifications')} className="p-2 relative">
                         <Ionicons name="notifications-outline" size={24} color="#1e293b" />
+                        {unreadNotificationCount > 0 && (
+                            <View className="absolute top-1 right-1 bg-red-500 rounded-full min-w-[16px] h-4 items-center justify-center px-1">
+                                <Text className="text-white text-[10px] font-bold">{unreadNotificationCount > 9 ? '9+' : unreadNotificationCount}</Text>
+                            </View>
+                        )}
                     </TouchableOpacity>
                     <TouchableOpacity onPress={() => navigation.navigate('Settings')} className="p-2">
                         <Ionicons name="settings-outline" size={24} color="#1e293b" />
@@ -110,30 +104,9 @@ export default function Header({ hideAds = false }: HeaderProps) {
                 </View>
             )}
 
-            {/* Ad Space - From Supabase */}
+            {/* Ad Space - Use AdBanner for consistent behavior */}
             {!hideAds && (
-                <View style={{
-                    height: 160,
-                    width: Dimensions.get('window').width,
-                    overflow: 'hidden',
-                    backgroundColor: '#f1f5f9'
-                }}>
-                    {loading ? (
-                        <View className="flex-1 items-center justify-center">
-                            <ActivityIndicator size="small" color="#3b82f6" />
-                        </View>
-                    ) : currentAd ? (
-                        <Image
-                            source={{ uri: currentAd.image_url }}
-                            style={{ width: '100%', height: '100%' }}
-                            resizeMode="cover"
-                        />
-                    ) : (
-                        <View className="flex-1 items-center justify-center">
-                            <Text className="text-slate-400 text-sm">Reklam bulunmuyor</Text>
-                        </View>
-                    )}
-                </View>
+                <AdBanner data={advertisements} />
             )}
         </SafeAreaView>
     );

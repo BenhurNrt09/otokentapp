@@ -41,7 +41,7 @@ export default function HelpCenterScreen() {
                 Alert.alert('Hata', 'Destek ekibine şu anda ulaşılamıyor.');
             }
         } catch (error) {
-            console.error('Error starting chat:', error);
+            console.error('Sohbet başlatma hatası:', error);
             Alert.alert('Hata', 'Bir hata oluştu.');
         } finally {
             setLoading(false);

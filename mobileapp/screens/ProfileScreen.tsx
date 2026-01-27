@@ -26,7 +26,7 @@ export default function ProfileScreen() {
         const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
         if (permission.granted) {
             const result = await ImagePicker.launchImageLibraryAsync({
-                mediaTypes: ImagePicker.MediaType.Images,
+                mediaTypes: ImagePicker.MediaTypeOptions.Images,
                 allowsEditing: true,
                 aspect: [1, 1],
                 quality: 0.5,
@@ -55,7 +55,7 @@ export default function ProfileScreen() {
             if (error) throw error;
             setFavoriteVehicles(data as Vehicle[]);
         } catch (error) {
-            console.error("Error fetching favorites:", error);
+            console.error("Favoriler yükleme hatası:", error);
         } finally {
             setLoadingFavorites(false);
         }
@@ -80,10 +80,7 @@ export default function ProfileScreen() {
                         ) : (
                             <Ionicons name="person" size={48} color="#2563eb" />
                         )}
-                        {/* Edit Icon Wrapper (Visual only for now) */}
-                        <View className="absolute bottom-0 right-0 bg-blue-600 rounded-full p-1.5 border-2 border-white">
-                            <Ionicons name="camera" size={12} color="white" />
-                        </View>
+                        {/* Edit Icon removed as requested */}
                     </View>
                     <Text className="text-xl font-bold text-slate-900 mb-1">{user.name} {user.surname}</Text>
                     <Text className="text-slate-500 mb-6">{user.email}</Text>
@@ -108,6 +105,9 @@ export default function ProfileScreen() {
                         <Text className="text-slate-500 text-xs mt-1">İlanlarım</Text>
                     </View>
                 </View>
+
+                {/* Notifications Button */}
+
 
                 {/* Favorites List */}
                 <View className="px-4">

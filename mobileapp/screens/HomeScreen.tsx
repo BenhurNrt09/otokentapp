@@ -1,32 +1,22 @@
 import { View, Text, FlatList, RefreshControl } from 'react-native';
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
-import { Vehicle } from '../types';
+import { Vehicle, Advertisement } from '../types';
 import VehicleCard from '../components/VehicleCard';
 import Header from '../components/Header';
-import { useApp } from '../context/AppContext';
 import AdBanner from '../components/AdBanner';
+import { useApp } from '../context/AppContext';
 
 export default function HomeScreen() {
     const { searchQuery } = useApp();
     const [vehicles, setVehicles] = useState<Vehicle[]>([]);
+    const [ads, setAds] = useState<Advertisement[]>([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
-
-    const [ads, setAds] = useState<any[]>([]);
 
     const fetchVehicles = async () => {
         try {
             setLoading(true);
-
-            // Fetch Ads
-            const { data: adsData } = await supabase
-                .from('advertisements')
-                .select('*')
-                .eq('is_active', true)
-                .order('display_order', { ascending: true });
-
-            if (adsData) setAds(adsData);
 
             // Fetch Vehicles
             let query = supabase
@@ -52,6 +42,25 @@ export default function HomeScreen() {
         }
     };
 
+    const fetchAds = async () => {
+        try {
+            const { data, error } = await supabase
+                .from('advertisements')
+                .select('*')
+                .eq('is_active', true)
+                .order('display_order', { ascending: true });
+
+            if (error) throw error;
+            setAds(data as Advertisement[]);
+        } catch (error) {
+            console.error('Error fetching ads:', error);
+        }
+    };
+
+    useEffect(() => {
+        fetchAds();
+    }, []);
+
     useEffect(() => {
         const timer = setTimeout(() => {
             fetchVehicles();
@@ -62,20 +71,17 @@ export default function HomeScreen() {
     const onRefresh = () => {
         setRefreshing(true);
         fetchVehicles();
+        fetchAds();
     };
 
     return (
         <View className="flex-1 bg-slate-50">
-            <Header />
+            <Header hideAds={true} />
 
             <FlatList
                 data={vehicles}
+                ListHeaderComponent={<AdBanner data={ads} />}
                 keyExtractor={(item) => item.id}
-                ListHeaderComponent={
-                    <View>
-                        <AdBanner data={ads} />
-                    </View>
-                }
                 renderItem={({ item }) => <VehicleCard vehicle={item} />}
                 contentContainerStyle={{ paddingBottom: 100 }}
                 refreshControl={

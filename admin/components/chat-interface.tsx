@@ -78,17 +78,18 @@ export default function ChatInterface({
 
         setIsSending(true);
         try {
-            const { error } = await supabase
-                .from('messages')
-                .insert({
-                    sender_id: currentUserId,
-                    receiver_id: otherUserId,
-                    content: newMessage,
-                    message_type: 'support', // Admin messages are support type
-                    is_read: false
-                });
+            // Use server action to send as 'OtoKent Support'
+            // We dynamic import to avoid server-only module issues if this component is client-side only
+            // But actions are fine to import.
+            // However, we need to pass the bound action or import it.
+            // Let's assume we import the action at top or passed as prop?
+            // Existing import is from '@/actions/message-actions':
+            const { sendSupportMessage } = await import('@/actions/message-actions');
 
-            if (error) throw error;
+            await sendSupportMessage(otherUserId, newMessage);
+
+            // We don't need to manually update state as realtime subscription will handle it,
+            // or we can optimistic update. Realtime is safer for consistency.
             setNewMessage('');
         } catch (error) {
             console.error('Error sending message:', error);
@@ -111,8 +112,8 @@ export default function ChatInterface({
                             >
                                 <div
                                     className={`max-w-[70%] rounded-lg p-3 ${isMe
-                                            ? 'bg-blue-600 text-white'
-                                            : 'bg-slate-100 text-slate-800'
+                                        ? 'bg-blue-600 text-white'
+                                        : 'bg-slate-100 text-slate-800'
                                         }`}
                                 >
                                     {msg.message_type === 'image' && msg.media_url && (

@@ -103,7 +103,7 @@ export default function ChatDetailScreen() {
                 await markMessagesAsRead();
             }
         } catch (e) {
-            console.error('Error loading messages:', e);
+            console.error('Mesajlar yüklenirken hata:', e);
         } finally {
             setLoading(false);
         }
@@ -119,7 +119,7 @@ export default function ChatDetailScreen() {
                 .eq('receiver_id', user.id)
                 .eq('is_read', false);
         } catch (e) {
-            console.error('Error marking read:', e);
+            console.error('Okundu işaretlenirken hata:', e);
         }
     };
 
@@ -163,7 +163,7 @@ export default function ChatDetailScreen() {
             }
 
             if (permissionResponse?.status !== 'granted') {
-                console.log('Requesting permission..');
+                console.log('İzin isteniyor..');
                 await requestPermission();
             }
             await Audio.setAudioModeAsync({
@@ -171,14 +171,14 @@ export default function ChatDetailScreen() {
                 playsInSilentModeIOS: true,
             });
 
-            console.log('Starting recording..');
+            console.log('Kayıt başlatılıyor..');
             const { recording: newRecording } = await Audio.Recording.createAsync(
                 Audio.RecordingOptionsPresets.HIGH_QUALITY
             );
             setRecording(newRecording);
-            console.log('Recording started');
+            console.log('Kayıt başladı');
         } catch (err) {
-            console.error('Failed to start recording', err);
+            console.error('Kayıt başlatılamadı', err);
             Alert.alert('Hata', 'Mikrofon izni gerekli veya kayıt başlatılamadı.');
         } finally {
             isAudioAction.current = false;
@@ -187,7 +187,7 @@ export default function ChatDetailScreen() {
 
     async function stopRecording() {
         if (isAudioAction.current) return;
-        console.log('Stopping recording..');
+        console.log('Kayıt durduruluyor..');
         const activeRecording = recordingRef.current;
         if (!activeRecording) {
             setRecording(undefined);
@@ -199,12 +199,12 @@ export default function ChatDetailScreen() {
         try {
             await activeRecording.stopAndUnloadAsync();
             const uri = activeRecording.getURI();
-            console.log('Recording stopped and stored at', uri);
+            console.log('Kayıt durduruldu ve kaydedildi:', uri);
             if (uri) {
                 sendMessage(uri, 'voice');
             }
         } catch (error) {
-            console.error('Failed to stop recording', error);
+            console.error('Kayıt durdurulamadı', error);
         } finally {
             setRecording(undefined);
             isAudioAction.current = false;
@@ -231,7 +231,7 @@ export default function ChatDetailScreen() {
                 setSound(null);
             }
 
-            console.log('Loading sound..', uri);
+            console.log('Ses yükleniyor..', uri);
             const { sound: newSound } = await Audio.Sound.createAsync(
                 { uri },
                 { shouldPlay: true }
@@ -249,7 +249,7 @@ export default function ChatDetailScreen() {
             });
 
         } catch (error) {
-            console.error('Failed to play sound', error);
+            console.error('Ses oynatılamadı', error);
             Alert.alert('Hata', 'Ses dosyası oynatılamadı.');
         } finally {
             isAudioAction.current = false;
@@ -309,7 +309,7 @@ export default function ChatDetailScreen() {
                 if (showAttachments) setShowAttachments(false);
             }
         } catch (e) {
-            console.error('Error sending message:', e);
+            console.error('Mesaj gönderilirken hata:', e);
             Alert.alert('Hata', 'Mesaj gönderilemedi.');
         }
     };
@@ -324,7 +324,7 @@ export default function ChatDetailScreen() {
             console.log(`Starting pickImage with ${sourceType}`);
             if (sourceType === 'camera') {
                 const permission = await ImagePicker.requestCameraPermissionsAsync();
-                console.log('Camera Permission:', permission);
+                console.log('Kamera İzni:', permission);
                 if (!permission.granted) {
                     Alert.alert('İzin Gerekli', 'Kamera izni verilmedi.');
                     return;
@@ -335,7 +335,7 @@ export default function ChatDetailScreen() {
                 });
             } else {
                 const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-                console.log('Library Permission:', permission);
+                console.log('Galeri İzni:', permission);
                 if (!permission.granted) {
                     Alert.alert('İzin Gerekli', 'Galeri izni verilmedi.');
                     return;
@@ -346,12 +346,12 @@ export default function ChatDetailScreen() {
                 });
             }
 
-            console.log('Picker Result:', result);
+            console.log('Seçim Sonucu:', result);
             if (!result.canceled && result.assets && result.assets.length > 0) {
                 sendMessage(result.assets[0].uri, 'image');
             }
         } catch (e) {
-            console.error('pickImage Error:', e);
+            console.error('Resim seçme hatası:', e);
             Alert.alert('Hata', 'Resim seçilirken bir hata oluştu.');
         }
     };
@@ -390,7 +390,7 @@ export default function ChatDetailScreen() {
                 }
             }
         } catch (e) {
-            console.error('Error opening document:', e);
+            console.error('Belge açılırken hata:', e);
             Alert.alert('Hata', 'Belge açılamadı.');
         }
     };
@@ -464,7 +464,7 @@ export default function ChatDetailScreen() {
                             </View>
                         </TouchableOpacity>
                     ) : (
-                        <Text className={`text-base ${isMe ? 'text-white' : 'text-slate-800'}`}>{item.text}</Text>
+                        <Text className={`text-base ${isMe ? 'text-white' : 'text-black'}`}>{item.text}</Text>
                     )}
 
                     <View className="flex-row justify-end mt-1 items-center gap-1">

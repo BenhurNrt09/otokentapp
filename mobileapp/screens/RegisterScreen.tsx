@@ -76,7 +76,7 @@ export default function RegisterScreen() {
                         });
 
                         if (retryError) {
-                            console.log('Auto-login retry failed:', retryError);
+                            console.log('Otomatik giriş yeniden denemesi başarısız:', retryError);
                             Alert.alert('Bilgi', 'Kayıt başarılı. Lütfen giriş yapınız.');
                             navigation.navigate('Login');
                         }
@@ -87,7 +87,7 @@ export default function RegisterScreen() {
                 }
             }
         } catch (error: any) {
-            console.error('Registration error:', error);
+            console.error('Kayıt hatası:', error);
             Alert.alert('Kayıt Başarısız', error.message || 'Kayıt sırasında bir hata oluştu.');
         } finally {
             setLoading(false);

@@ -26,7 +26,7 @@ export default function TermsScreen() {
                 setPolicy(data);
             }
         } catch (e) {
-            console.error('Error loading policy:', e);
+            console.error('Politika yükleme hatası:', e);
         } finally {
             setLoading(false);
         }

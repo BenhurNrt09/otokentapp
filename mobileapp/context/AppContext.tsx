@@ -65,12 +65,46 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
     const [isLoggedIn, setIsLoggedIn] = useState(false);
 
     useEffect(() => {
-        // Handle init session
-        supabase.auth.getSession().then(({ data: { session } }) => {
-            if (session) {
-                handleAuthChange(session.user);
+        const checkSession = async () => {
+            try {
+                const rememberMe = await AsyncStorage.getItem('remember_me');
+                const { data: { session } } = await supabase.auth.getSession();
+
+                if (session) {
+                    if (rememberMe === 'true') {
+                        handleAuthChange(session.user);
+                    } else {
+                        // If not remembered, sign out to require login
+                        // specific check: if this is a fresh launch (not just a reload of context)
+                        // Actually, if we just logged in (in LoginScreen), remember_me is set.
+                        // If we restarted app, we want to force login if remember_me is false.
+                        // But wait, if I just logged in with rememberMe=false, and I am using the app,
+                        // checking this here might log me out immediately?
+                        // No, useEffect runs on mount. LoginScreen sets session.
+
+                        // We need to distinguish between "App Just Started" and "User Just Logged In".
+                        // Use a session storage or variable?
+
+                        // Better approach: LoginScreen sets the session. AppContext detects it.
+                        // If AppContext mounts and finds an EXISTING session from storage, AND remember_me is false -> Sign Out.
+
+                        // How to know if it's "Existing from storage"?
+                        // Supabase retrieves it from storage.
+
+                        // Let's rely on standard practice: 
+                        // If rememberMe is false, we technically shouldn't persist the session.
+                        // But Supabase client persists it by default.
+
+                        // We will sign out if rememberMe is explicitly 'false' AND we are checking initial session.
+                        await supabase.auth.signOut();
+                    }
+                }
+            } catch (e) {
+                console.error(e);
             }
-        });
+        };
+
+        checkSession();
 
         // Listen for auth changes
         const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {

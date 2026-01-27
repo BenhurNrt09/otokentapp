@@ -1,13 +1,7 @@
-import React from 'react';
-import { View, Image, Dimensions, TouchableOpacity, Linking, Text } from 'react-native';
-import Carousel from 'react-native-reanimated-carousel';
+import React, { useRef, useEffect } from 'react';
+import { View, Image, Dimensions, TouchableOpacity, Linking, Text, FlatList, ViewToken } from 'react-native';
 
-interface Advertisement {
-    id: string;
-    title: string;
-    image_url: string;
-    link_url?: string;
-}
+import { Advertisement } from '../types';
 
 interface AdBannerProps {
     data: Advertisement[];
@@ -16,8 +10,8 @@ interface AdBannerProps {
 export default function AdBanner({ data }: AdBannerProps) {
     const width = Dimensions.get('window').width;
     const height = width / 2.5; // Aspect ratio
-
-    if (!data || data.length === 0) return null;
+    const flatListRef = useRef<FlatList>(null);
+    const currentIndexRef = useRef(0);
 
     const handlePress = (url?: string) => {
         if (url) {
@@ -25,22 +19,55 @@ export default function AdBanner({ data }: AdBannerProps) {
         }
     };
 
+    // Auto-scroll effect
+    useEffect(() => {
+        if (!data || data.length <= 1) return;
+
+        const interval = setInterval(() => {
+            currentIndexRef.current = (currentIndexRef.current + 1) % data.length;
+            flatListRef.current?.scrollToIndex({
+                index: currentIndexRef.current,
+                animated: true,
+            });
+        }, 10000); // Auto-scroll every 10 seconds
+
+        return () => clearInterval(interval);
+    }, [data]);
+
+    const onViewableItemsChanged = useRef(({ viewableItems }: { viewableItems: ViewToken[] }) => {
+        if (viewableItems.length > 0 && viewableItems[0].index !== null) {
+            currentIndexRef.current = viewableItems[0].index;
+        }
+    });
+
+    if (!data || data.length === 0) return null;
+
     return (
-        <View className="mb-4">
-            <Carousel
-                loop
-                width={width}
-                height={height}
-                autoPlay={data.length > 1}
+        <View className="mb-4" style={{ height }}>
+            <FlatList
+                ref={flatListRef}
                 data={data}
-                scrollAnimationDuration={1000}
+                horizontal
+                pagingEnabled
+                scrollEnabled={false}
+                showsHorizontalScrollIndicator={false}
+                keyExtractor={(item) => item.id}
+                onViewableItemsChanged={onViewableItemsChanged.current}
+                viewabilityConfig={{ viewAreaCoveragePercentThreshold: 50 }}
+                onScrollToIndexFailed={(info) => {
+                    const wait = new Promise(resolve => setTimeout(resolve, 500));
+                    wait.then(() => {
+                        flatListRef.current?.scrollToIndex({ index: info.index, animated: true });
+                    });
+                }}
                 renderItem={({ item }) => (
                     <TouchableOpacity
                         activeOpacity={0.9}
                         onPress={() => handlePress(item.link_url)}
-                        className="px-4"
+                        style={{ width }}
+                        className="px-0"
                     >
-                        <View className="rounded-xl overflow-hidden shadow-lg bg-white h-full relative">
+                        <View className="shadow-lg bg-white h-full relative">
                             <Image
                                 source={{ uri: item.image_url }}
                                 style={{ width: '100%', height: '100%' }}

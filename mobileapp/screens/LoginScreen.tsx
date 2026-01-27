@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, ScrollView, Alert, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation } from '@react-navigation/native';
 import { useApp } from '../context/AppContext';
 import { supabase } from '../lib/supabase';
@@ -33,9 +34,12 @@ export default function LoginScreen() {
 
             if (error) throw error;
 
+            // Save Remember Me preference
+            await AsyncStorage.setItem('remember_me', keepSignedIn ? 'true' : 'false');
+
             // AppContext listener will handle the state update
         } catch (error: any) {
-            console.error('Login error:', error);
+            console.error('Giriş hatası:', error);
             if (error.message.includes('Invalid login credentials')) {
                 Alert.alert(
                     'Giriş Başarısız',
@@ -58,10 +62,16 @@ export default function LoginScreen() {
     return (
         <SafeAreaView className="flex-1 bg-white">
             <KeyboardAvoidingView
-                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                behavior={Platform.OS === 'ios' ? 'padding' : undefined}
                 className="flex-1"
+                keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
             >
-                <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: 'center' }} className="px-6">
+                <ScrollView
+                    contentContainerStyle={{ flexGrow: 1, justifyContent: 'center' }}
+                    className="px-6"
+                    keyboardShouldPersistTaps="handled"
+                    showsVerticalScrollIndicator={false}
+                >
 
                     {/* Logo Section */}
                     <View className="items-center mb-10 mt-10">

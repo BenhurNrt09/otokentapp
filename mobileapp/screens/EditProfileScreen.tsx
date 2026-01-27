@@ -1,10 +1,11 @@
-import { View, Text, TextInput, TouchableOpacity, ScrollView, Image } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, ScrollView, Image, Alert } from 'react-native';
 import React, { useState } from 'react';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useApp } from '../context/AppContext';
 import { useToast } from '../context/ToastContext';
 import * as ImagePicker from 'expo-image-picker';
+import { supabase } from '../lib/supabase';
 
 export default function EditProfileScreen() {
     const navigation = useNavigation();
@@ -41,7 +42,52 @@ export default function EditProfileScreen() {
             });
 
             if (!result.canceled && result.assets && result.assets.length > 0) {
-                updateUser({ avatar: result.assets[0].uri });
+                const uri = result.assets[0].uri;
+
+                // Show loading toast? We are in a try/catch, showErrorToast is available.
+                // We should probably add local loading state but for now just await.
+
+                try {
+                    const ext = uri.substring(uri.lastIndexOf('.') + 1);
+                    const fileName = `${user.id}/${Date.now()}.${ext}`;
+
+                    const formData = new FormData();
+                    formData.append('file', {
+                        uri,
+                        name: fileName,
+                        type: `image/${ext}`
+                    } as any);
+
+                    // 1. Upload to Supabase Storage
+                    const { data: uploadData, error: uploadError } = await supabase.storage
+                        .from('avatars')
+                        .upload(fileName, formData, {
+                            upsert: true
+                        });
+
+                    if (uploadError) throw uploadError;
+
+                    // 2. Get Public URL
+                    const { data: { publicUrl } } = supabase.storage
+                        .from('avatars')
+                        .getPublicUrl(fileName);
+
+                    // 3. Update User in DB
+                    const { error: dbError } = await supabase
+                        .from('users')
+                        .update({ avatar_url: publicUrl })
+                        .eq('id', user.id);
+
+                    if (dbError) throw dbError;
+
+                    // 4. Update Local State
+                    updateUser({ avatar: publicUrl });
+                    showSuccessToast('Profil fotoğrafı güncellendi');
+
+                } catch (error) {
+                    console.error('Avatar upload error:', error);
+                    showErrorToast('Fotoğraf yüklenirken hata oluştu');
+                }
             }
         } catch (e) {
             console.error(e);
