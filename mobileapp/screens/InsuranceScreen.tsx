@@ -1,7 +1,8 @@
-import { View, Text, FlatList, TouchableOpacity, TextInput, Modal, Alert, Linking, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, TextInput, Modal, Alert, Linking, ScrollView, KeyboardAvoidingView, Platform, ActivityIndicator } from 'react-native';
 import React, { useState } from 'react';
 import Header from '../components/Header';
 import { Ionicons } from '@expo/vector-icons';
+import { supabase } from '../lib/supabase';
 
 const INSURANCE_COMPANIES = [
     { id: '1', name: 'Allianz Sigorta', hasPhone: '08503999999', hasWeb: 'https://www.allianz.com.tr' },
@@ -17,8 +18,11 @@ export default function InsuranceScreen() {
     const [search, setSearch] = useState('');
     const [modalVisible, setModalVisible] = useState(false);
     const [selectedCompany, setSelectedCompany] = useState<any>(null);
+    const [loading, setLoading] = useState(false);
 
     // Form State
+    const [name, setName] = useState('');
+    const [surname, setSurname] = useState('');
     const [tcNo, setTcNo] = useState('');
     const [plate, setPlate] = useState('');
     const [serialNo, setSerialNo] = useState('');
@@ -28,24 +32,54 @@ export default function InsuranceScreen() {
         setModalVisible(true);
     };
 
-    const handleSubmit = () => {
-        if (!tcNo || !plate || !serialNo) {
+    const handleSubmit = async () => {
+        if (!tcNo || !plate || !serialNo || !name || !surname) {
             Alert.alert('Eksik Bilgi', 'Lütfen tüm alanları doldurunuz.');
             return;
         }
 
-        // Mock Submission
-        setModalVisible(false);
-        Alert.alert(
-            'Teklif İsteği Alındı',
-            `${selectedCompany?.name} için teklif talebiniz oluşturuldu. En kısa sürede size dönüş yapılacaktır.`,
-            [{ text: 'Tamam' }]
-        );
+        setLoading(true);
+        try {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) {
+                Alert.alert('Hata', 'Teklif almak için giriş yapmalısınız.');
+                setLoading(false);
+                return;
+            }
 
-        // Reset form
-        setTcNo('');
-        setPlate('');
-        setSerialNo('');
+            const { error } = await supabase.from('offers').insert({
+                user_id: user.id,
+                offer_type: 'insurance',
+                insurance_company: selectedCompany?.name,
+                name: name,
+                surname: surname,
+                tc_number: tcNo,
+                plate_number: plate,
+                license_serial: serialNo,
+                status: 'pending'
+            });
+
+            if (error) throw error;
+
+            setModalVisible(false);
+            Alert.alert(
+                'Teklif İsteği Alındı',
+                `${selectedCompany?.name} için teklif talebiniz başarıyla oluşturuldu. Yetkililerimiz en kısa sürede sizinle iletişime geçecektir.`,
+                [{ text: 'Tamam' }]
+            );
+
+            // Reset form
+            setName('');
+            setSurname('');
+            setTcNo('');
+            setPlate('');
+            setSerialNo('');
+        } catch (error: any) {
+            console.error(error);
+            Alert.alert('Hata', 'İşlem sırasında bir hata oluştu: ' + error.message);
+        } finally {
+            setLoading(false);
+        }
     };
 
     const filteredCompanies = INSURANCE_COMPANIES.filter(c =>
@@ -76,9 +110,8 @@ export default function InsuranceScreen() {
                 renderItem={({ item }) => (
                     <TouchableOpacity
                         onPress={() => handleCompanyPress(item)}
-                        className="flex-1 m-2 bg-white rounded-xl shadow-sm border border-slate-100 items-center justify-center p-6 h-40"
+                        className="flex-1 m-2 bg-white rounded-xl shadow-sm border border-slate-100 items-center justify-center p-6 h-40 active:scale-95 transition-transform"
                     >
-                        {/* Placeholder for Logo */}
                         <View className="w-20 h-20 bg-slate-50 rounded-full items-center justify-center mb-3">
                             <Ionicons name="shield-checkmark" size={32} color="#cbd5e1" />
                         </View>
@@ -95,71 +128,95 @@ export default function InsuranceScreen() {
                 visible={modalVisible}
                 onRequestClose={() => setModalVisible(false)}
             >
-                <View className="flex-1 justify-end bg-black/50">
-                    <KeyboardAvoidingView
-                        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-                    >
-                        <View className="bg-white rounded-t-3xl p-6 min-h-[500px]">
-                            <View className="flex-row justify-between items-center mb-6">
-                                <Text className="text-xl font-bold text-slate-900">
-                                    {selectedCompany?.name} Teklif Al
-                                </Text>
-                                <TouchableOpacity onPress={() => setModalVisible(false)} className="p-2 bg-slate-100 rounded-full">
-                                    <Ionicons name="close" size={24} color="#64748b" />
-                                </TouchableOpacity>
-                            </View>
+                <KeyboardAvoidingView
+                    behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+                    className="flex-1 justify-end bg-black/50"
+                >
+                    <View className="bg-white rounded-t-3xl p-6 shadow-2xl h-[85%]">
+                        <View className="flex-row justify-between items-center mb-6">
+                            <Text className="text-xl font-bold text-slate-900">
+                                {selectedCompany?.name} Teklif
+                            </Text>
+                            <TouchableOpacity onPress={() => setModalVisible(false)} className="p-2 bg-slate-100 rounded-full">
+                                <Ionicons name="close" size={24} color="#64748b" />
+                            </TouchableOpacity>
+                        </View>
 
-                            <ScrollView className="mb-4">
-                                <View className="space-y-4">
-                                    <View>
-                                        <Text className="text-sm font-medium text-slate-700 mb-1">TC Kimlik No</Text>
-                                        <TextInput
-                                            className="w-full bg-slate-50 border border-slate-200 rounded-xl p-4 text-base"
-                                            placeholder="11 haneli TC kimlik no"
-                                            keyboardType="numeric"
-                                            maxLength={11}
-                                            value={tcNo}
-                                            onChangeText={setTcNo}
-                                        />
-                                    </View>
-
-                                    <View>
-                                        <Text className="text-sm font-medium text-slate-700 mb-1">Plaka</Text>
-                                        <TextInput
-                                            className="w-full bg-slate-50 border border-slate-200 rounded-xl p-4 text-base"
-                                            placeholder="34 ABC 34"
-                                            autoCapitalize="characters"
-                                            value={plate}
-                                            onChangeText={setPlate}
-                                        />
-                                    </View>
-
-                                    <View>
-                                        <Text className="text-sm font-medium text-slate-700 mb-1">Ruhsat Seri No</Text>
-                                        <TextInput
-                                            className="w-full bg-slate-50 border border-slate-200 rounded-xl p-4 text-base"
-                                            placeholder="Örn: AB 123456"
-                                            autoCapitalize="characters"
-                                            value={serialNo}
-                                            onChangeText={setSerialNo}
-                                        />
-                                    </View>
+                        <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
+                            <View className="space-y-4 mb-8">
+                                <View className="mb-4">
+                                    <Text className="text-sm font-medium text-slate-700 mb-2">Adınız</Text>
+                                    <TextInput
+                                        className="w-full bg-slate-50 border border-slate-200 rounded-xl p-4 text-base font-semibold"
+                                        placeholder="Adınız"
+                                        value={name}
+                                        onChangeText={setName}
+                                    />
                                 </View>
-                            </ScrollView>
+
+                                <View className="mb-4">
+                                    <Text className="text-sm font-medium text-slate-700 mb-2">Soyadınız</Text>
+                                    <TextInput
+                                        className="w-full bg-slate-50 border border-slate-200 rounded-xl p-4 text-base font-semibold"
+                                        placeholder="Soyadınız"
+                                        value={surname}
+                                        onChangeText={setSurname}
+                                    />
+                                </View>
+
+                                <View className="mb-4">
+                                    <Text className="text-sm font-medium text-slate-700 mb-2">TC Kimlik No</Text>
+                                    <TextInput
+                                        className="w-full bg-slate-50 border border-slate-200 rounded-xl p-4 text-base font-semibold"
+                                        placeholder="11 haneli TC kimlik no"
+                                        keyboardType="numeric"
+                                        maxLength={11}
+                                        value={tcNo}
+                                        onChangeText={setTcNo}
+                                    />
+                                </View>
+
+                                <View className="mb-4">
+                                    <Text className="text-sm font-medium text-slate-700 mb-2">Plaka</Text>
+                                    <TextInput
+                                        className="w-full bg-slate-50 border border-slate-200 rounded-xl p-4 text-base font-semibold"
+                                        placeholder="34 ABC 34"
+                                        autoCapitalize="characters"
+                                        value={plate}
+                                        onChangeText={setPlate}
+                                    />
+                                </View>
+
+                                <View className="mb-4">
+                                    <Text className="text-sm font-medium text-slate-700 mb-2">Ruhsat Seri No</Text>
+                                    <TextInput
+                                        className="w-full bg-slate-50 border border-slate-200 rounded-xl p-4 text-base font-semibold"
+                                        placeholder="Örn: AB 123456"
+                                        autoCapitalize="characters"
+                                        value={serialNo}
+                                        onChangeText={setSerialNo}
+                                    />
+                                </View>
+                            </View>
 
                             <TouchableOpacity
                                 onPress={handleSubmit}
-                                className="w-full bg-blue-600 p-4 rounded-xl items-center mt-2 shadow-lg shadow-blue-200"
+                                disabled={loading}
+                                className="w-full bg-blue-600 p-4 rounded-xl items-center shadow-lg shadow-blue-200 mb-8"
                             >
-                                <Text className="text-white font-bold text-lg">Teklif İste</Text>
+                                {loading ? (
+                                    <ActivityIndicator color="white" />
+                                ) : (
+                                    <Text className="text-white font-bold text-lg">Teklif İste</Text>
+                                )}
                             </TouchableOpacity>
 
-                            <Text className="text-xs text-slate-400 text-center mt-4">
+                            <Text className="text-xs text-slate-400 text-center mb-8">
                                 * Kişisel verileriniz KVKK kapsamında korunmaktadır.
                             </Text>
-                        </View>
-                    </KeyboardAvoidingView>
-                </View>
+                        </ScrollView>
+                    </View>
+                </KeyboardAvoidingView>
             </Modal>
         </View>
     );

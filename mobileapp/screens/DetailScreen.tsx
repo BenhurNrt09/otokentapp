@@ -50,6 +50,7 @@ export default function DetailScreen() {
     const [name, setName] = React.useState('');
     const [surname, setSurname] = React.useState('');
     const [phone, setPhone] = React.useState('');
+
     const [successModalVisible, setSuccessModalVisible] = React.useState(false);
     const [loading, setLoading] = React.useState(false);
 
@@ -77,7 +78,8 @@ export default function DetailScreen() {
                     name: name,
                     surname: surname,
                     phone: phone,
-                    status: 'pending'
+                    status: 'pending',
+                    offer_type: 'vehicle'
                 });
 
             if (error) throw error;
@@ -272,6 +274,7 @@ export default function DetailScreen() {
                                         keyboardType="numeric"
                                         value={offerPrice}
                                         onChangeText={setOfferPrice}
+                                        style={{ color: '#0f172a' }}
                                     />
                                 </View>
                             </View>

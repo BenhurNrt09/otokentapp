@@ -37,10 +37,8 @@ export default function OffersPage() {
         try {
             const { data, error } = await supabase
                 .from('offers')
-                .select(`
-                    *,
-                    user:user_id(email),
-                    vehicle:vehicle_id(brand, model)
+                *,
+                vehicle: vehicle_id(brand, model)
                 `)
                 .order('created_at', { ascending: false });
 
@@ -61,7 +59,7 @@ export default function OffersPage() {
                 vehicle: item.vehicle ? {
                     brand: item.vehicle.brand,
                     model: item.vehicle.model,
-                    title: `${item.vehicle.brand} ${item.vehicle.model}`
+                    title: `${ item.vehicle.brand } ${ item.vehicle.model } `
                 } : null
             }));
 
@@ -134,11 +132,11 @@ export default function OffersPage() {
                                         {format(new Date(offer.created_at), 'dd MMM yyyy HH:mm', { locale: tr })}
                                     </td>
                                     <td className="p-4">
-                                        <span className={`px-2 py-1 rounded text-xs font-bold uppercase
-                                            ${offer.status === 'accepted' ? 'bg-green-100 text-green-700' : ''}
-                                            ${offer.status === 'rejected' ? 'bg-red-100 text-red-700' : ''}
-                                            ${offer.status === 'pending' ? 'bg-yellow-100 text-yellow-700' : ''}
-                                        `}>
+                                        <span className={`px - 2 py - 1 rounded text - xs font - bold uppercase
+                                            ${ offer.status === 'accepted' ? 'bg-green-100 text-green-700' : '' }
+                                            ${ offer.status === 'rejected' ? 'bg-red-100 text-red-700' : '' }
+                                            ${ offer.status === 'pending' ? 'bg-yellow-100 text-yellow-700' : '' }
+            `}>
                                             {offer.status === 'pending' ? 'Bekliyor' : offer.status === 'accepted' ? 'Onaylandı' : 'Reddedildi'}
                                         </span>
                                     </td>
