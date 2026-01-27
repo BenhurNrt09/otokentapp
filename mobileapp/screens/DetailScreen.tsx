@@ -1,4 +1,5 @@
-import { View, Text, ScrollView, Image, TouchableOpacity, Dimensions, Linking } from 'react-native';
+import { View, Text, ScrollView, Image, TouchableOpacity, Dimensions, Linking, Modal, TextInput, Alert, ActivityIndicator, KeyboardAvoidingView, Platform } from 'react-native';
+import { supabase } from '../lib/supabase';
 import React from 'react';
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import { RootStackParamList } from '../types';
@@ -44,16 +45,66 @@ export default function DetailScreen() {
         maximumFractionDigits: 0,
     }).format(vehicle.price);
 
+    const [offerModalVisible, setOfferModalVisible] = React.useState(false);
+    const [offerPrice, setOfferPrice] = React.useState('');
+    const [name, setName] = React.useState('');
+    const [surname, setSurname] = React.useState('');
+    const [phone, setPhone] = React.useState('');
+    const [successModalVisible, setSuccessModalVisible] = React.useState(false);
+    const [loading, setLoading] = React.useState(false);
+
+    const handleSendOffer = async () => {
+        if (!offerPrice || !name || !surname || !phone) {
+            Alert.alert('Hata', 'Lütfen tüm alanları doldurunuz.');
+            return;
+        }
+
+        setLoading(true);
+        try {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) {
+                Alert.alert('Hata', 'Teklif vermek için giriş yapmalısınız.');
+                setLoading(false);
+                return;
+            }
+
+            const { error } = await supabase
+                .from('offers')
+                .insert({
+                    user_id: user.id,
+                    vehicle_id: vehicle.id,
+                    price: parseFloat(offerPrice.replace(/[^0-9.]/g, '')),
+                    name: name,
+                    surname: surname,
+                    phone: phone,
+                    status: 'pending'
+                });
+
+            if (error) throw error;
+
+            setOfferModalVisible(false);
+            setTimeout(() => setSuccessModalVisible(true), 300);
+            setOfferPrice('');
+            setName('');
+            setSurname('');
+            setPhone('');
+        } catch (error: any) {
+            Alert.alert('Hata', 'Teklif gönderilirken bir sorun oluştu: ' + error.message);
+        } finally {
+            setLoading(false);
+        }
+    };
+
     return (
-        <View className="flex-1 bg-white">
-            <StatusBar style="light" />
+        <View className="flex-1 bg-slate-50">
+            <StatusBar style="dark" />
 
             {/* Back Button (Absolute) */}
             <TouchableOpacity
                 onPress={() => navigation.goBack()}
-                className="absolute top-12 left-4 z-50 bg-black/50 w-10 h-10 items-center justify-center rounded-full"
+                className="absolute top-12 left-4 z-50 bg-white/90 p-2 rounded-full shadow-sm"
             >
-                <Ionicons name="arrow-back" size={24} color="white" />
+                <Ionicons name="arrow-back" size={24} color="#1e293b" />
             </TouchableOpacity>
 
             <ScrollView contentContainerStyle={{ paddingBottom: 100 }}>
@@ -84,8 +135,8 @@ export default function DetailScreen() {
                     </Text>
 
                     {/* Technical Details Grid */}
-                    <View className="bg-slate-50 p-4 rounded-xl border border-slate-100 mb-6">
-                        <Text className="text-lg font-bold text-slate-900 mb-4 pb-2 border-b border-slate-200">Teknik Detaylar</Text>
+                    <View className="bg-white p-4 rounded-xl border border-slate-100 mb-6 shadow-sm">
+                        <Text className="text-lg font-bold text-slate-900 mb-4 pb-2 border-b border-slate-100">Teknik Detaylar</Text>
                         <View className="flex-row flex-wrap justify-between">
                             <DetailRow label="Yıl" value={vehicle.year} />
                             <DetailRow label="KM" value={vehicle.mileage?.toLocaleString()} />
@@ -107,8 +158,8 @@ export default function DetailScreen() {
                     )}
 
                     {/* Description */}
-                    <View className="mt-6">
-                        <Text className="text-lg font-bold text-slate-900 mb-3 block border-b border-slate-100 pb-2">
+                    <View className="mt-6 bg-white p-4 rounded-xl border border-slate-100 shadow-sm">
+                        <Text className="text-lg font-bold text-slate-900 mb-3 border-b border-slate-100 pb-2">
                             Açıklama
                         </Text>
                         <Text className="text-slate-600 leading-6">
@@ -119,8 +170,15 @@ export default function DetailScreen() {
             </ScrollView>
 
             {/* Action Buttons */}
-            <View className="absolute bottom-0 left-0 right-0 p-4 bg-white border-t border-gray-100 shadow-md">
-                <View className="flex-row gap-4">
+            <View className="absolute bottom-0 left-0 right-0 p-4 bg-white border-t border-gray-100 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)]">
+                <View className="flex-row gap-3">
+                    <TouchableOpacity
+                        onPress={() => setOfferModalVisible(true)}
+                        className="flex-1 bg-orange-500 py-3.5 rounded-xl items-center shadow-orange-200 shadow-md active:scale-95 transition-transform"
+                    >
+                        <Text className="text-white font-bold text-base">Teklif Ver</Text>
+                    </TouchableOpacity>
+
                     <TouchableOpacity
                         onPress={() => {
                             const mockChat = {
@@ -135,18 +193,137 @@ export default function DetailScreen() {
                             };
                             navigation.navigate('ChatDetail', { chat: mockChat });
                         }}
-                        className="flex-1 bg-blue-600 py-4 rounded-xl items-center shadow-blue-200 shadow-lg"
+                        className="flex-1 bg-blue-600 py-3.5 rounded-xl items-center shadow-blue-200 shadow-md active:scale-95 transition-transform"
                     >
-                        <Text className="text-white font-bold text-lg">Mesaj Gönder</Text>
+                        <Text className="text-white font-bold text-base">Mesaj</Text>
                     </TouchableOpacity>
+
                     <TouchableOpacity
                         onPress={() => Linking.openURL('tel:905551234567')}
-                        className="flex-1 bg-emerald-600 py-4 rounded-xl items-center shadow-emerald-200 shadow-lg"
+                        className="w-14 items-center justify-center bg-emerald-600 rounded-xl shadow-emerald-200 shadow-md active:scale-95 transition-transform"
                     >
-                        <Text className="text-white font-bold text-lg">Ara</Text>
+                        <Ionicons name="call" size={24} color="white" />
                     </TouchableOpacity>
                 </View>
             </View>
+
+            {/* Offer Modal */}
+            <Modal
+                animationType="slide"
+                transparent={true}
+                visible={offerModalVisible}
+                onRequestClose={() => setOfferModalVisible(false)}
+            >
+                <KeyboardAvoidingView
+                    behavior={Platform.OS === "ios" ? "padding" : "height"}
+                    className="flex-1 justify-end bg-black/50"
+                >
+                    <View className="bg-white rounded-t-3xl p-6 h-[85%] shadow-2xl">
+                        <View className="flex-row justify-between items-center mb-6">
+                            <Text className="text-xl font-bold text-slate-900">Teklif Ver</Text>
+                            <TouchableOpacity onPress={() => setOfferModalVisible(false)} className="p-2 bg-slate-100 rounded-full">
+                                <Ionicons name="close" size={24} color="#64748b" />
+                            </TouchableOpacity>
+                        </View>
+
+                        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
+                            <View className="mb-4">
+                                <Text className="text-slate-500 mb-2 font-medium">Adınız</Text>
+                                <TextInput
+                                    className="bg-slate-50 border border-slate-200 rounded-xl p-4 text-slate-900 font-bold h-14"
+                                    placeholder="Adınız"
+                                    placeholderTextColor="#94a3b8"
+                                    value={name}
+                                    onChangeText={setName}
+                                />
+                            </View>
+
+                            <View className="mb-4">
+                                <Text className="text-slate-500 mb-2 font-medium">Soyadınız</Text>
+                                <TextInput
+                                    className="bg-slate-50 border border-slate-200 rounded-xl p-4 text-slate-900 font-bold h-14"
+                                    placeholder="Soyadınız"
+                                    placeholderTextColor="#94a3b8"
+                                    value={surname}
+                                    onChangeText={setSurname}
+                                />
+                            </View>
+
+                            <View className="mb-4">
+                                <Text className="text-slate-500 mb-2 font-medium">Telefon Numarası</Text>
+                                <TextInput
+                                    className="bg-slate-50 border border-slate-200 rounded-xl p-4 text-slate-900 font-bold h-14"
+                                    placeholder="05XX XXX XX XX"
+                                    placeholderTextColor="#94a3b8"
+                                    keyboardType="phone-pad"
+                                    value={phone}
+                                    onChangeText={setPhone}
+                                />
+                            </View>
+
+                            <View className="mb-6">
+                                <Text className="text-slate-500 mb-2 font-medium">Teklifiniz (TL)</Text>
+                                <View className="bg-slate-50 border border-slate-200 rounded-xl p-4 flex-row items-center h-14">
+                                    <Text className="text-slate-900 font-bold text-xl mr-2">₺</Text>
+                                    <TextInput
+                                        className="flex-1 text-xl font-bold text-slate-900"
+                                        placeholder="0"
+                                        placeholderTextColor="#94a3b8"
+                                        keyboardType="numeric"
+                                        value={offerPrice}
+                                        onChangeText={setOfferPrice}
+                                    />
+                                </View>
+                            </View>
+
+                            <TouchableOpacity
+                                onPress={handleSendOffer}
+                                disabled={loading}
+                                className="bg-orange-500 py-4 rounded-xl items-center shadow-lg shadow-orange-200 mb-8"
+                            >
+                                {loading ? (
+                                    <ActivityIndicator color="white" />
+                                ) : (
+                                    <Text className="text-white font-bold text-lg">Teklifi Gönder</Text>
+                                )}
+                            </TouchableOpacity>
+                        </ScrollView>
+                    </View>
+                </KeyboardAvoidingView>
+            </Modal>
+
+            {/* Success Modal */}
+            <Modal
+                animationType="fade"
+                transparent={true}
+                visible={successModalVisible}
+                onRequestClose={() => setSuccessModalVisible(false)}
+            >
+                <View className="flex-1 items-center justify-center bg-black/80 px-4">
+                    <View className="bg-white rounded-[32px] p-8 items-center w-full max-w-sm shadow-2xl relative overflow-hidden">
+                        {/* Decorative Background */}
+                        <View className="absolute top-0 left-0 right-0 h-32 bg-green-500/10 rounded-t-[32px]" />
+
+                        <View className="w-24 h-24 bg-green-500 rounded-full items-center justify-center mb-6 shadow-xl shadow-green-200 mt-4 border-4 border-white">
+                            <Ionicons name="checkmark-sharp" size={56} color="white" />
+                        </View>
+
+                        <Text className="text-3xl font-black text-slate-900 text-center mb-3">Harika!</Text>
+
+                        <Text className="text-slate-500 text-center text-lg mb-8 leading-7 font-medium">
+                            Teklifiniz satıcıya başarıyla iletildi.{'\n'}En kısa sürede size geri dönüş yapılacaktır.
+                        </Text>
+
+                        <TouchableOpacity
+                            onPress={() => setSuccessModalVisible(false)}
+                            className="bg-slate-900 w-full py-4 rounded-2xl items-center active:scale-95 transition-transform shadow-lg shadow-slate-300"
+                        >
+                            <Text className="text-white font-bold text-lg">Tamam, Anlaşıldı</Text>
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            </Modal>
+
         </View>
     );
 }

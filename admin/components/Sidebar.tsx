@@ -63,6 +63,11 @@ const menuItems = [
         href: "/dashboard/content/advertisements",
     },
     {
+        title: "Gelen Teklifler",
+        icon: FileText, // Using FileText or maybe a better icon like Wallet or Tag if available, sticking to existing import
+        href: "/dashboard/offers",
+    },
+    {
         title: "SSS",
         icon: FileText,
         href: "/dashboard/content/faqs",

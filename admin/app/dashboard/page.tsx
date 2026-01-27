@@ -1,7 +1,9 @@
 import { createClient } from '@/lib/supabase/server';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Users, Car, MessageSquare, Bell, Plus, Image, HelpCircle, FileText } from 'lucide-react';
+import { Users, Car, MessageSquare, Bell, Plus, Image, HelpCircle, FileText, Banknote } from 'lucide-react';
 import Link from 'next/link';
+import { format } from 'date-fns';
+import { tr } from 'date-fns/locale';
 
 export const dynamic = 'force-dynamic';
 
@@ -9,11 +11,12 @@ export default async function DashboardPage() {
     const supabase = await createClient();
 
     // Fetch real statistics from Supabase
-    const [usersResult, vehiclesResult, messagesResult, notificationsResult] = await Promise.all([
+    const [usersResult, vehiclesResult, messagesResult, notificationsResult, offersResult] = await Promise.all([
         supabase.from('users').select('*', { count: 'exact', head: true }),
         supabase.from('vehicles').select('*', { count: 'exact', head: true }),
         supabase.from('messages').select('*', { count: 'exact', head: true }),
         supabase.from('notifications').select('*', { count: 'exact', head: true }),
+        supabase.from('offers').select('*', { count: 'exact', head: true }),
     ]);
 
     const stats = {
@@ -21,6 +24,7 @@ export default async function DashboardPage() {
         vehicles: vehiclesResult.count || 0,
         messages: messagesResult.count || 0,
         notifications: notificationsResult.count || 0,
+        offers: offersResult.count || 0,
     };
 
     // Fetch recent vehicles
@@ -30,10 +34,10 @@ export default async function DashboardPage() {
         .order('created_at', { ascending: false })
         .limit(5);
 
-    // Fetch recent users
-    const { data: recentUsers } = await supabase
-        .from('users')
-        .select('*')
+    // Fetch recent offers
+    const { data: recentOffers } = await supabase
+        .from('offers')
+        .select('*, vehicle:vehicle_id(brand, model)')
         .order('created_at', { ascending: false })
         .limit(5);
 
@@ -57,10 +61,10 @@ export default async function DashboardPage() {
             hoverColor: 'hover:bg-blue-100',
         },
         {
-            title: 'Yeni SSS',
-            description: 'Soru-cevap ekle',
-            icon: HelpCircle,
-            href: '/dashboard/content/faqs/new',
+            title: 'Gelen Teklifler',
+            description: 'Teklifleri yönet',
+            icon: Banknote,
+            href: '/dashboard/offers',
             color: 'text-purple-600',
             bgColor: 'bg-purple-50',
             hoverColor: 'hover:bg-purple-100',
@@ -114,13 +118,13 @@ export default async function DashboardPage() {
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between pb-2">
                         <CardTitle className="text-sm font-medium text-slate-600">
-                            Mesajlar
+                            Gelen Teklifler
                         </CardTitle>
-                        <MessageSquare className="w-4 h-4 text-orange-600" />
+                        <Banknote className="w-4 h-4 text-purple-600" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold">{stats.messages}</div>
-                        <p className="text-xs text-slate-500 mt-1">Toplam mesaj sayısı</p>
+                        <div className="text-2xl font-bold">{stats.offers}</div>
+                        <p className="text-xs text-slate-500 mt-1">Bekleyen teklif sayısı</p>
                     </CardContent>
                 </Card>
 
@@ -129,7 +133,7 @@ export default async function DashboardPage() {
                         <CardTitle className="text-sm font-medium text-slate-600">
                             Bildirimler
                         </CardTitle>
-                        <Bell className="w-4 h-4 text-purple-600" />
+                        <Bell className="w-4 h-4 text-orange-600" />
                     </CardHeader>
                     <CardContent>
                         <div className="text-2xl font-bold">{stats.notifications}</div>
@@ -179,7 +183,7 @@ export default async function DashboardPage() {
                                             </p>
                                         </div>
                                         <span className="text-xs text-slate-400">
-                                            {new Date(vehicle.created_at).toLocaleDateString('tr-TR')}
+                                            {format(new Date(vehicle.created_at), 'dd MMM yyyy', { locale: tr })}
                                         </span>
                                     </div>
                                 ))}
@@ -190,28 +194,42 @@ export default async function DashboardPage() {
                     </CardContent>
                 </Card>
 
-                {/* Recent Users */}
+                {/* Recent Offers */}
                 <Card>
                     <CardHeader>
-                        <CardTitle>Son Kayıt Olan Kullanıcılar</CardTitle>
+                        <CardTitle>Son Gelen Teklifler</CardTitle>
                     </CardHeader>
                     <CardContent>
-                        {recentUsers && recentUsers.length > 0 ? (
+                        {recentOffers && recentOffers.length > 0 ? (
                             <div className="space-y-4">
-                                {recentUsers.map((user) => (
-                                    <div key={user.id} className="flex items-center justify-between border-b pb-3 last:border-0">
+                                {recentOffers.map((offer) => (
+                                    <div key={offer.id} className="flex items-center justify-between border-b pb-3 last:border-0">
                                         <div>
-                                            <p className="font-medium">{user.name || 'İsimsiz'} {user.surname || ''}</p>
-                                            <p className="text-sm text-slate-500">{user.email}</p>
+                                            <p className="font-medium">
+                                                {offer.vehicle ? `${offer.vehicle.brand} ${offer.vehicle.model}` : 'Araç Silinmiş'}
+                                            </p>
+                                            <p className="text-sm text-slate-500">
+                                                {offer.price ? `${Number(offer.price).toLocaleString('tr-TR')} ₺` : '-'}
+                                                <span className="ml-2 text-slate-400">({offer.name} {offer.surname})</span>
+                                            </p>
                                         </div>
-                                        <span className="text-xs text-slate-400">
-                                            {new Date(user.created_at).toLocaleDateString('tr-TR')}
-                                        </span>
+                                        <div className="flex flex-col items-end">
+                                            <span className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded mb-1
+                                                ${offer.status === 'accepted' ? 'bg-green-100 text-green-700' : ''}
+                                                ${offer.status === 'rejected' ? 'bg-red-100 text-red-700' : ''}
+                                                ${offer.status === 'pending' ? 'bg-yellow-100 text-yellow-700' : ''}
+                                            `}>
+                                                {offer.status === 'pending' ? 'Bekliyor' : offer.status === 'accepted' ? 'Onaylandı' : 'Reddedildi'}
+                                            </span>
+                                            <span className="text-xs text-slate-400">
+                                                {format(new Date(offer.created_at), 'dd MMM', { locale: tr })}
+                                            </span>
+                                        </div>
                                     </div>
                                 ))}
                             </div>
                         ) : (
-                            <p className="text-sm text-slate-500">Henüz kullanıcı bulunmuyor</p>
+                            <p className="text-sm text-slate-500">Henüz teklif bulunmuyor</p>
                         )}
                     </CardContent>
                 </Card>

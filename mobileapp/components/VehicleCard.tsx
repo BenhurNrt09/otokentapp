@@ -59,10 +59,17 @@ export default function VehicleCard({ vehicle }: VehicleCardProps) {
                 </TouchableOpacity>
 
                 {/* Status Badge */}
-                {vehicle.status !== 'yayinda' && (
+                {vehicle.status !== 'yayinda' ? (
                     <View className="absolute top-2 left-2 bg-red-500 px-2 py-1 rounded">
                         <Text className="text-white text-xs font-bold uppercase">{vehicle.status}</Text>
                     </View>
+                ) : (
+                    // Show "YENİ" if created within last 3 days
+                    (new Date(vehicle.created_at).getTime() > Date.now() - (3 * 24 * 60 * 60 * 1000)) && (
+                        <View className="absolute top-2 left-2 bg-green-600 px-2 py-1 rounded shadow-sm">
+                            <Text className="text-white text-xs font-bold uppercase">YENİ</Text>
+                        </View>
+                    )
                 )}
             </View>
 

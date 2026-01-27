@@ -1,7 +1,7 @@
--- 1. Fix Messages Table (Add media_url)
-ALTER TABLE messages ADD COLUMN IF NOT EXISTS media_url TEXT;
+-- Ensure is_support column exists in users table
+ALTER TABLE users ADD COLUMN IF NOT EXISTS is_support BOOLEAN DEFAULT FALSE;
 
--- 2. Fix Offers Table (Ensure it exists and has basic columns)
+-- Create offers table if it doesn't exist
 CREATE TABLE IF NOT EXISTS offers (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
@@ -11,19 +11,20 @@ CREATE TABLE IF NOT EXISTS offers (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
--- 3. Add Extra Columns to Offers (Idempotent)
+-- Add new columns if they don't exist (useful if table was created in previous failed runs without these)
 ALTER TABLE offers ADD COLUMN IF NOT EXISTS name TEXT;
 ALTER TABLE offers ADD COLUMN IF NOT EXISTS surname TEXT;
 ALTER TABLE offers ADD COLUMN IF NOT EXISTS phone TEXT;
 
--- 4. Enable RLS on Offers
+-- Enable RLS
 ALTER TABLE offers ENABLE ROW LEVEL SECURITY;
 
--- 5. Refresh RLS Policies (Drop and Recreate to be safe)
+-- Drop existing policies to avoid conflicts
 DROP POLICY IF EXISTS "Users can create offers" ON offers;
 DROP POLICY IF EXISTS "Users can view their own offers" ON offers;
 DROP POLICY IF EXISTS "Admins can view all offers" ON offers;
 
+-- Re-create Policies
 CREATE POLICY "Users can create offers" 
 ON offers FOR INSERT 
 TO authenticated 
@@ -42,7 +43,3 @@ USING (
     OR 
     auth.jwt() ->> 'email' = 'admin@otokent.com'
 );
-
--- 6. Force Schema Cache Reload
--- Running a NOTIFY statement often helps Supabase/PostgREST pick up changes immediately.
-NOTIFY pgrst, 'reload schema';
